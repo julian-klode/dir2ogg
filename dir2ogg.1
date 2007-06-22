@@ -1,0 +1,76 @@
+.TH DIR2OGG 1 "19 JULY 06"
+.SH NAME
+dir2ogg \- Convert MP3, WAV, and M4A files to OGG format
+.SH SYNOPSIS
+\fBdir2ogg\fP [ options ] ( \fIfilename\fP [\fIfilename2\fP] || \fIdirectory\fP [\fIdirectory2\fP] )
+.SH DESCRIPTION
+\fIdir2ogg\fP converts MP3, M4A, WMA and WAV files to the open-source OGG format. \fIdir2ogg\fP is a python script that simply binds together mpg123, faad, and oggenc making it easier for the user to convert his/her music files. OGGs are about 15 to 20 percent smaller than MP3 files, with the same relative audio quality. \fIdir2ogg\fP can be called with the \fI-d\fP flag at the command line to convert any number of directories at once, or given MP3, M4A, WMA, 
+and/or WAV filenames as arguments, \fIdir2ogg\fP will convert only those files. If converting WAV, M4A or WMA files with \fI-d\fP you must add 
+the \fI-w\fP, \fI-m\fP or \fI-f\fP command line flags respectively. These flags are not neccesary unless using \fI-d\fP. 
+Note that converting M4A files requires you to have faad installed, and converting WMA files requires mplayer.
+
+Keep in mind that converting from MP3 or M4A to OGG is a conversion between two lossy formats. This is fine if you just want to free up some disk space, but if you're a hard-core audiophile you may be disappointed. I really can't notice a difference in quality with 'naked' ears myself.
+
+.SS Options
+.TP
+\fB-h or --help\fP
+print quick usage details to the screen.
+.TP
+\fB-d or --directory\fP
+convert all MP3 files in \fIdirectory\fP. WAV and M4A files will be converted if used with the \fI-w\fP and \fI-m\fP command line flags.
+.TP
+\fB-r or --recursive\fP
+like \fI-d\fP but descends recursively into directories.
+.TP
+\fB-p or --preserve-wav\fP
+preserve all WAV files. By default they are deleted.
+.TP
+\fB-m or --convert-m4a\fP
+convert M4A files to OGG. Only used with \fI-d\fP or \fI-r\fP. Requires faad.
+.TP
+\fB-f or --convert-wma\fP
+convert M4A files to OGG. Only used with \fI-d\fP or \fI-r\fP. Requires mplayer.
+.TP
+\fB-w or --convert-wav\fP
+convert WAV files to OGG. Only used with \fI-d\fP or \fI-r\fP.
+.TP
+\fB-n or --no-mp3\fP
+ignore MP3 files when converting a directory. Only used with \fI-d\fP or \fI-r\fP.
+.TP
+\fB-qN or --quality=N\fP
+OGG quality. N is a number between -1 and 10. Default is 3. Decimals are OK (ie: 3.7)
+.TP
+\fB-x or --delete-mp3\fP
+delete original MP3 file after conversion.
+.TP
+\fB-a or --delete-m4a\fP
+delete original M4A file after conversion.
+.TP
+\fB-g or --delete-wma\fP
+delete original WMA file after conversion.
+.TP
+\fB-s or --shell-protect\fP
+create shell-protected filenames. Spaces are converted to underscores.
+.TP
+\fB-v or --verbose\fP
+increase \fIdir2ogg\fP's verbosity.
+
+.SH FILES
+none
+.SH "SEE ALSO"
+mpg123(1), oggenc(1), mplayer(1)
+.SH BUGS
+The special characters '"', '*', '!', and ';' will be removed from filenames.
+The special character '&' will be converted to 'and'. These characters are known 
+to break the script when fed to bash. If you don't like the idea of this script 
+changing your filenames that is fair enough, but I submit these characters have 
+no business being in filenames anyway. If you want to write a patch that will 
+escape them rather than change the filename I'll be happy to include it, I am just 
+lazy and can't be bothered too do this myself :)
+
+Send bug reports to dir2ogg@badcomputer.org
+.SH AUTHOR
+Darren Kirby <d@badcomputer.org>
+.SH CONTRIBUTORS
+Cameron Stone <camerons@cse.unsw.edu.au> 
+

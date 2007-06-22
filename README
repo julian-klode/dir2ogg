@@ -1,0 +1,78 @@
+dir2ogg version 0.9.3
+
+Manifest:
+
+README     - You're reading it now.
+LICENSE    - The Artistic License, under which dir2ogg is released.
+CHANGES    - dir2ogg's cvs commit log
+install.sh - A bash script to automate installation.
+dir2ogg    - The script itself.
+dir2ogg.1  - The manpage for dir2ogg
+
+Installation:
+
+(Not so) new in dir2ogg is the install.sh script, which automates installation of
+the script. You should only use this if you have root access to the computer
+you are attempting to install dir2ogg on. If you do not have root access then
+you will have to use dir2ogg from your home directory (perhaps you have a
+/home/username/bin directory?).
+
+To install simply run:
+
+sh install.sh
+
+Configuration:
+
+dir2ogg supports MP3 ID3 tag preservation, but you will need pyid3lib, which is
+a module that isn't in the standard library. It can be freely obtained from
+http://pyid3lib.sourceforge.net/. To preserve WMA meta-tags you will need my own  
+wmainfo-py library from http://badcomputer.org/code/wmainfo/. If you choose not 
+to install these libraries, or just can't be bothered, the script will still work 
+and scratch tags will be created using the filename as basis. 
+ 
+To convert M4As you need faad installed.
+To convert WMAa you need mplayer installed
+
+Usage: 
+
+Read the manpage for detailed instructions: "man dir2ogg", or type "dir2ogg
+--help" for brief usage details. The script is extremely simple, so you
+shouldn't have any troubles figuring it out.
+
+Dir2ogg can take multiple filenames as arguments, and will Do The Right Thing 
+based on the file extension. If using the '-d' flag, you may only give directories 
+as arguments, not filenames and directories 
+
+If you wish to convert m4a, wma and/or wav files using -d then the -m, -f and -w 
+flags must be used respectively. Wav files are deleted by default, use -p to keep 
+wav files after conversion.
+
+The special characters '"', '*', '!', and ';' will be removed from filenames.
+The special character '&' will be converted to 'and'. These characters are known 
+to break the script when fed to bash. If you don't like the idea of this script 
+changing your filenames that is fair enough, but I submit these characters have 
+no business being in proper unix filenames anyway. If you want to write a patch 
+that will escape them rather than change the filename I'll be happy to include it, 
+I am just lazy and can't be bothered to do this myself :)
+
+Bugs:
+
+See the manpage. Please send bug reports to: dir2ogg@badcomputer.org
+
+License and Disclaimer:
+
+This program is released under the Artistic License. A copy is enclosed in the
+dir2ogg tarball. If you make dir2ogg better the author would appreciate if you
+send him a copy. This software comes without any warranty, and the author can
+accept absolutely no responsibility for lost or damaged files.
+
+Author:
+
+This script was written by Darren Kirby ::
+d@badcomputer.org :: http://badcomputer.org/
+
+With contributions from:
+Cameron Stone <camerons@cse.unsw.edu.au>
+
+Date:
+July 19, 2006.

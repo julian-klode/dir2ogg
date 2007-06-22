@@ -1,0 +1,567 @@
+#!/usr/bin/python
+
+#  dir2ogg converts mp3, m4a, and wav files to the free open source OGG format. Oggs are
+#  about 20-25% smaller than mp3s with the same relative sound quality. Your mileage may vary.
+
+#  Keep in mind that converting from mp3 or m4a to ogg is a conversion between two lossy formats.
+#  This is fine if you just want to free up some disk space, but if you're a hard-core audiophile
+#  you may be dissapointed. I really can't notice a difference in quality with 'naked' ears myself.
+
+#  This script converts mp3s to wavs using mpg123 then converts the wavs to oggs using oggenc.
+#  m4a conversions require faad. Id3 tag support requires pyid3lib for mp3s.
+#  Scratch tags using the filename will be written for wav files (and mp3s with no tags!)
+
+#  dir2ogg is Copyright(c) Darren Kirby 2003 - 2006.
+#  WMA support thanks to Cameron Stone
+#  Released under the Artistic Licence:
+#  http://www.opensource.org/licenses/artistic-license.php
+
+#  Have fun kids!
+
+import sys
+import os, os.path
+import string
+import re
+from fnmatch import filter
+from getopt import gnu_getopt, GetoptError
+
+
+def getOptions():
+    ''' Process command line options/arguments.'''
+    try:
+        opts, args = gnu_getopt(sys.argv[1:], "dwmfpxagsnvrhq:", ["directory",
+                     "convert-wav", "convert-m4a", "convert-wma", "preserve-wav",
+                     "delete-mp3", "delete-m4a", "delete-wma", "shell-protect",
+                     "no-mp3", "verbose", "recursive", "help", "quality="])
+    except GetoptError:
+        error("Invalid option(s)")
+        showUsage()
+        sys.exit(2)
+    q = "3.0" # change from < 0.9.3 behavior
+    flags = []
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            showUsage()
+            sys.exit(0)
+        if opt in ("-w", "--convert-wav"):
+            flags.append('w')
+        if opt in ("-m", "--convert-m4a"):
+            flags.append('m')
+        if opt in ("-f", "--convert-wma"):
+            flags.append('f')
+        if opt in ("-p", "--preserve-wav"):
+            flags.append('p')
+        if opt in ("-x", "--delete-mp3"):
+            flags.append('x')
+        if opt in ("-a", "--delete-m4a"):
+            flags.append('a')
+        if opt in ("-g", "--delete-wma"):
+            flags.append('g')
+        if opt in ("-s", "--shell-protect"):
+            flags.append('s')
+        if opt in ("-n", "--no-mp3"):
+            flags.append('n')
+        if opt in ("-v", "--verbose"):
+            flags.append('v')
+        if opt in ("-r", "--recursive"):
+            flags.append('r')
+        if opt in ("-q", "--quality"):
+            q = arg
+        if opt in ('-d', '--directory'):
+            flags.append('d')
+    return flags, args, q
+
+def info(msg):
+    '''print info to the screen (green)'''
+    os.system('echo -en $"\\033[0;32m"')
+    print "%s" % msg
+    os.system('echo -en $"\\033[0;39m"')
+
+def warn(msg):
+    '''print warnings to the screen (yellow)'''
+    os.system('echo -en $"\\033[1;33m"')
+    print "%s" % msg
+    os.system('echo -en $"\\033[0;39m"')
+
+def error(msg):
+    '''print errors to the screen (red)'''
+    os.system('echo -en $"\\033[1;31m"')
+    print "*** %s ***" % msg
+    os.system('echo -en $"\\033[0;39m"')
+
+def returnDirs(root):
+    mydirs = []
+    for pdir, dirs, files in os.walk(root):
+        if not pdir in mydirs:
+            mydirs.append(pdir)
+    return mydirs
+
+
+class CleanUp:
+    '''
+    CleanUp: helper methods which tidy up a bit :)
+
+    Note: wavs are deleted by default. use '-p' to save them.
+    If you find more characters that break the script please
+    send a bug report to dir2ogg@badcomputer.org
+    '''
+
+    def filterShellKillers(self, ds):
+        ''' Filter characters that break the script when fed to bash'''
+        if re.search('\!',ds) != "None":
+            cs = re.sub('\!', '', ds)
+        if re.search(';', cs) != "None":
+            cs = re.sub(';', '', cs)
+        if re.search('\*', cs) != "None":
+            cs = re.sub('\*', '', cs)
+        if re.search('"', cs) != "None":
+            cs = re.sub('"', '', cs)
+        if re.search('&', cs) != "None":
+            cs = re.sub('&', 'and', cs)
+        if cs != ds:
+            os.rename(ds, cs)
+            if self.vf:
+                warn('"%s" renamed "%s"' % (ds,cs))
+        return cs
+
+    def escapeShell(self, songSpaces):
+        ''' Convert spaces to underscores.'''
+        song = string.replace(songSpaces, ' ', '_')
+        os.rename(songSpaces, song)
+        return song
+
+    def removeSong(self, song):
+        os.remove(song)
+
+
+class Id3TagHandler:
+    '''
+    Class for handling meta-tags.
+
+    If there are no 'real' tags, defaults will
+    be created using the filename as basis.
+    '''
+    def grabM4ATags(self):
+        ''' For m4a's we parse output of <faad -i> '''
+        x = os.popen('faad -i "%s" 2>&1' % self.song) # faad writes ouput to stderr
+        self.artist = string.strip(self.song[:-4])
+        self.title = string.strip(self.song[:-4])
+        self.album = "n/a"
+        self.year = "n/a"
+        self.comment = "Comment=molested by dir2ogg"
+        self.genre = "255"
+        self.track = ""
+        for tag in x:
+            if 'artist:' in tag:
+                self.artist = tag[8:-1]
+            if 'title:' in tag:
+                self.title = tag[7:-1]
+            if 'album:' in tag:
+                self.album = tag[7:-1]
+            if 'date:' in tag:
+                self.year = tag[6:-1]
+            if 'genre:' in tag:
+                self.genre = tag[7:-1]
+            if 'track:' in tag:
+                self.track = tag[7:-1]
+            if 'totaltracks:' in tag:
+                self.track = self.track + ",%s" % tag[13:-1]
+        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
+
+    def grabWMATags(self):
+        '''
+        To grab real tags you need wmainfo-py
+        http://badcomputer.org/code/wmainfo/
+        '''
+        try:
+            import wmainfo
+        except ImportError:
+            warn('You dont have wmainfo-py installed...')
+            warn('Scratch tags will be created using filenames.')
+        try:
+            x = wmainfo.WmaInfo(self.song)
+        except:
+            pass #  Use the defaults
+        try:
+            if x.hastag('AlbumArtist'):
+                self.artist = x.tags['AlbumArtist']
+            else:
+                self.artist = x.tags['Author']
+        except:
+            self.artist = string.strip(self.song[:-4])
+        try:
+            self.title = x.tags['Title']
+        except:
+            self.title = string.strip(self.song[:-4])
+        try:
+            self.album = x.tags['AlbumTitle']
+        except:
+            self.album = "n/a"
+        try:
+            self.year = x.tags['Year']
+        except:
+            self.year = "n/a"
+        self.comment = "Comment=molested by dir2ogg"
+        try:
+            self.genre = x.tags['Genre']
+        except:
+            self.genre = "255"
+        try:
+            self.track = x.tags['TrackNumber']
+        except:
+            self.track = ""
+        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
+
+    def grabMP3Tags(self):
+        '''
+        To grab real tags you need pyid3lib
+        http://pyid3lib.sourceforge.net/
+        '''
+        try:
+            import pyid3lib
+        except ImportError:
+            warn('You dont have pyid3lib installed...')
+            warn('Scratch tags will be created using filenames.')
+        try: 
+            x = pyid3lib.tag(self.song)
+        except:
+            pass #  Use the defaults...
+        try:
+            self.artist = x.artist
+        except AttributeError:
+            self.artist = string.strip(self.song[:-4])
+        try:
+            self.title = x.title
+        except AttributeError:
+            self.title = string.strip(self.song[:-4])
+        try:
+            self.album = x.album
+        except AttributeError:
+            self.album = "n/a"
+        try:
+            self.year = str(x.year)
+        except AttributeError:
+            self.year = "n/a"
+        try:
+            c = x[x.index('COMM')]
+            self.comment = "Comment=" + str(c['text'])
+        except ValueError:
+            self.comment = "Comment=molested by dir2ogg"
+        try:
+            g = x[x.index('TCON')]
+            self.genre = g['text']
+        except ValueError:
+            self.genre = "255" # 255 = 'unknown'
+        try:
+            self.track = x.track
+            if len(self.track) == 2:
+                self.track = str(self.track[0]) + "," + str(self.track[1])
+            else:
+                self.track = str(self.track[0])
+        except:
+            self.track = ""
+        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
+
+    def listIfVerbose(self):
+        info('Meta-tags I will write:')
+        info('Artist: ' + self.artist)
+        info('Title: ' + self.title)
+        info('Album: ' + self.album)
+        info('Year: ' + self.year)
+        info('Comment: ' + self.comment[8:])
+        info('Genre: ' + self.genre)
+        info('Track Num: ' + str(self.track))
+
+class Convert(Id3TagHandler, CleanUp):
+    '''
+    Base conversion Class.
+
+    __init__ creates some useful attributes,
+    grabs the id3 tags, and sets a flag to remove files.
+    Methods are the conversions we can do
+    '''
+
+    def __init__(self, song, myopts):
+        self.vf = 0
+        if 'v' in myopts[0]:
+            self.vf = 1
+        if 's' in myopts[0]:
+            song = self.escapeShell(song)
+        self.song = self.filterShellKillers(song)
+        songRoot = string.strip(self.song[:-3])
+        wav, ogg = 'wav', 'ogg'
+        self.songwav = songRoot + wav
+        self.songogg = songRoot + ogg
+        self.quality = myopts[2]
+        self.BUFFER = '#' * 78
+        if self.song[-4:] == '.m4a':
+            self.tags = self.grabM4ATags()
+        elif self.song[-4:] == '.wma':
+            self.tags = self.grabWMATags()
+        else:
+            self.tags = self.grabMP3Tags()
+        self.r3 = self.r4 = self.r5 = self.rw = 0
+        if not 'p' in myopts[0]:
+            self.rw = 1 #  remove wav (default)
+        if 'x' in myopts[0]:
+            self.r3 = 1 #  remove mp3
+        if 'a' in myopts[0]:
+            self.r4 = 1 #  remove m4a
+        if 'g' in myopts[0]:
+            self.r5 = 1 #  remove wma
+
+    def wmaToWav(self):
+        ''' Convert wma -> wav.'''
+        info('''
+        Converting from wma to wav.
+        Output from mplayer:
+
+        ''')
+        print self.BUFFER
+        es = os.system('mplayer -vo null -vc dummy -af resample=44100 -ao ' \
+                       'pcm:waveheader "%s" && mv audiodump.wav "%s"' \
+                       % (self.song,self.songwav))
+        print self.BUFFER
+        if es != 0:
+            error('mplayer error!')
+            error('Decoding of "%s" failed. Corrupt wma?' % (self.song))
+            self.r3 = 0 #  don't remove the mp3
+
+
+    def mp3ToWav(self):
+        ''' Convert mp3 -> wav.'''
+        info('''
+        Converting from mp3 to wav.
+        Output from mpg123:
+
+        ''')
+        print self.BUFFER
+        es = os.system('mpg123 -w "%s" "%s"' % (self.songwav,self.song))
+        print self.BUFFER
+        if es != 0:
+            error('mpg123 error!')
+            error('Decoding of "%s" failed. Corrupt mp3?' % (self.song))
+            self.r3 = 0 #  don't remove the mp3
+
+    def m4aToWav(self):
+        '''Convert m4a -> wav.'''
+        info('''
+        Converting from m4a to wav.
+        Output from faad:
+ 
+        ''')
+        print self.BUFFER
+        es = os.system('faad "%s"' % self.song)
+        print self.BUFFER
+        if es != 0:
+            error('faad error!')
+            error('Decoding "%s" failed. Corrupt m4a?' % self.song)
+            self.r4 = 0
+
+    def wavToOgg(self):
+        ''' Convert wav -> ogg.'''
+        if self.vf:
+            self.listIfVerbose()
+        info('''
+        Converting from wav to ogg.
+        Output from oggenc:
+
+        ''')
+        print self.BUFFER
+        try:
+            es = os.system('oggenc -q"%s" -a "%s" -t "%s" -l "%s" -d "%s" -c "%s" -G "%s" -N "%s" "%s"' % \
+                 (self.quality, self.tags[0], self.tags[1], self.tags[2], self.tags[3], self.tags[4], self.tags[5], self.tags[6], self.songwav))
+        except TypeError:
+            warn('There seems to be something wrong with the tags, trying a modest subset...')
+            try:
+                es = os.system('oggenc -q"%s" -a "%s" -t "%s" -l "%s" "%s"' % \
+                              (self.quality, self.tags[0], self.tags[1], self.tags[2],self.songwav))
+            except:
+                warn('Still borked!!! Trying a minimal subset...')
+                try:
+                    es = os.system('oggenc -q"%s" -a "%s" -t "%s" "%s"' % (self.quality, self.tags[0], self.tags[1], self.songwav))
+                except:
+                    warn('Sorry. No tags for you')
+                    es = os.system('oggenc -q3 "%s"' % self.songwav) 
+        print self.BUFFER
+        if es != 0:
+            error('oggenc error!')
+            error('Encoding of "%s" failed.' % self.songwav)
+            self.rw = 0
+        if self.rw:
+            self.removeSong(self.songwav)
+        if self.r3: 
+            self.removeSong(self.song)
+        if self.r4: 
+            self.removeSong(self.song)
+        if self.r5: 
+            self.removeSong(self.song)
+
+class ConvertDirectory:
+    ''' 
+    This class is just a wrapper for Convert.
+
+    Grab the songs to convert, then feed them one
+    by one to the Convert class.
+    '''
+
+    def __init__(self, myopts, d):
+        ''' Decide which files will be converted.'''
+        if os.path.exists(d) == 0:
+            error('Directory: "%s" not found' % d)
+            sys.exit(1)
+        os.chdir(d)
+        self.d = d
+        self.songs = os.listdir(os.getcwd())
+        self.songs.sort()
+        if not 'n' in myopts[0]:
+            self.mp3s = (filter(self.songs, '*.mp3')) + (filter(self.songs, '*.MP3'))
+        if 'm' in myopts[0]:
+            self.m4as = (filter(self.songs, '*.m4a')) + (filter(self.songs, '*.M4A'))
+        if 'f' in myopts[0]:
+            self.wmas = (filter(self.songs, '*.wma')) + (filter(self.songs, '*.WMA'))
+        if 'w' in myopts[0]:
+            self.wavs = (filter(self.songs, '*.wav')) + (filter(self.songs, '*.WAV'))
+ 
+    def printIfVerbose(self, myopts):
+        ''' Echo files to be converted if verbose flag is set.'''
+        info('In %s I am going to convert:' % self.d)
+        if not 'n' in myopts[0]:
+            for mp3 in self.mp3s:
+                info(mp3)
+            if len(self.mp3s) == 0:
+                warn('No mp3s in %s' % self.d)
+        if 'm' in myopts[0]:
+            for m4a in self.m4as:
+                info(m4a)
+            if len(self.m4as) == 0:
+                warn('No m4as in %s' % self.d)
+        if 'f' in myopts[0]:
+            for wma in self.wmas:
+                info(wma)
+            if len(self.wmas) == 0:
+                warn('No wmas in %s' % self.d)
+        if 'w' in myopts[0]:
+            for wav in self.wavs:
+                info(wav)
+            if len(self.wavs) == 0:
+                warn('No wavs in %s' % self.d)
+        print
+
+    def thruTheRinger(self, myopts):
+        ''' Not much happening here.'''
+        if 'v' in myopts[0]:
+            self.printIfVerbose(myopts)
+        if not 'n' in myopts[0]:
+            for mp3 in self.mp3s:
+                x = Convert(mp3, myopts)
+                x.mp3ToWav()
+                x.wavToOgg()
+        if 'f' in myopts[0]:
+            for wma in self.wmas:
+                x = Convert(wma, myopts)
+                x.wmaToWav()
+                x.wavToOgg()
+        if 'm' in myopts[0]:
+            for m4a in self.m4as:
+                x = Convert(m4a, myopts)
+                x.m4aToWav()
+                x.wavToOgg()
+        if 'w' in myopts[0]:
+            for wav in self.wavs:
+                x = Convert(wav, myopts)
+                x.wavToOgg()
+
+
+def showUsage():
+    print '''Usage: dir2ogg [options] ( file1 [file2..x] || directory1 [directory2..x])
+    Options:    
+       '-d'  or '--directory'      convert files in all directories specified as arguments
+       '-r'  or '--recursive'      convert files in all subdirectories of all directories specified as arguments
+       '-w'  or '--convert-wav'    convert wav files (use with '-d')
+       '-p'  or '--preserve-wav'   preserve all wav files after converting to ogg
+       '-m'  or '--convert-m4a'    convert m4a files (use with '-d') 
+       '-a'  or '--delete-m4a'     delete original m4a file
+       '-f'  or '--convert-wma'    convert wma files (use with '-d') 
+       '-g'  or '--delete-wma'     delete original wma file 
+       '-s'  or '--shell-protect'  replace spaces with underscores
+       '-n'  or '--no-mp3'         don't convert mp3s (use with '-d', and '-c' and/or '-m')
+       '-x'  or '--delete-mp3'     delete original mp3 file
+       '-qN' or '--quality=N'      quality. N is a number from 1-10 (see 'man oggenc')
+       '-v'  or '--verbose'        increase dir2ogg's verbosity
+       '-h'  or '--help'           print this summary
+    '''
+
+def showBanner():
+    print '''dir2ogg Version 0.9.3 (fully Web 2.0 compliant!) :: Use at your own risk.
+Written by Darren Kirby :: d@badcomputer.org :: http://badcomputer.org/unix/dir2ogg/
+Released under the Artistic License.
+    '''
+
+def main():
+    showBanner()
+    myopts = getOptions()
+    if ('.mp3') or ('.MP3') in myopts[1]:
+        mp3s = (filter(myopts[1], '*.mp3')) + (filter(myopts[1], '*.MP3'))
+        for s in mp3s:
+            if os.path.exists(s) == 0:
+                error('File: "%s" not found' % s)
+                sys.exit(1)
+            x = Convert(s, myopts)
+            x.mp3ToWav()
+            x.wavToOgg()
+    if ('.m4a') or ('.M4A') in myopts[1]:
+        m4as = (filter(myopts[1], '*.m4a')) + (filter(myopts[1], '*.M4A'))
+        for s in m4as:
+            if os.path.exists(s) == 0:
+                error('File: "%s" not found' % s)
+                sys.exit(1)
+            x = Convert(s, myopts)
+            x.m4aToWav()
+            x.wavToOgg()
+    if ('.wma') or ('.WMA') in myopts[1]:
+        wmas = (filter(myopts[1], '*.wma')) + (filter(myopts[1], '*.WMA'))
+        for s in wmas:
+            if os.path.exists(s) == 0:
+                error('File: "%s" not found' % s)
+                sys.exit(1)
+            x = Convert(s, myopts)
+            x.wmaToWav()
+            x.wavToOgg()
+    if ('.wav') or ('.WAV') in myopts[1]:
+        wavs = (filter(myopts[1], '*.wav')) + (filter(myopts[1], '*.WAV'))
+        for s in wavs:
+            if os.path.exists(s) == 0:
+                error('File: "%s" not found' % s)
+                sys.exit(1)
+            x = Convert(s, myopts)
+            x.wavToOgg()
+    if 'r' in myopts[0]:
+        rdirs = []
+        for d in myopts[1]:
+            if os.path.exists(d) == 0:
+                error('Directory: "%s" not found' % d)
+                sys.exit(1)
+            l = returnDirs(d)
+            rdirs += l
+        if len(rdirs) == 0:
+            error('No files to convert!')
+            sys.exit(1)
+        for directory in rdirs:
+            cwd = os.getcwd()
+            x = ConvertDirectory(myopts, directory)
+            x.thruTheRinger(myopts)
+            os.chdir(cwd)
+        sys.exit(0)
+    if 'd' in myopts[0]:
+        for d in myopts[1]:
+            cwd = os.getcwd()
+            x = ConvertDirectory(myopts, d)
+            x.thruTheRinger(myopts)
+            os.chdir(cwd)
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
+
+# dir2ogg version 0.9.3
