@@ -42,19 +42,28 @@ from getopt import gnu_getopt, GetoptError
 def getOptions():
     ''' Process command line options/arguments.'''
     try:
-        opts, args = gnu_getopt(sys.argv[1:], "dwmfpxagsnvrhq:", ["directory",
+        opts, args = gnu_getopt(sys.argv[1:], "dwmfpxagsnvrhVq:", ["directory",
                      "convert-wav", "convert-m4a", "convert-wma", "preserve-wav",
                      "delete-mp3", "delete-m4a", "delete-wma", "shell-protect",
-                     "no-mp3", "verbose", "recursive", "help", "quality="])
+                     "no-mp3", "verbose", "recursive", "help", "version", "quality="])
     except GetoptError:
         error("Invalid option(s)")
         showUsage()
         sys.exit(2)
     q = "3.0" # change from < 0.9.3 behavior
+
     flags = []
+    if len(sys.argv) < 2:
+        showBanner()
+        showUsage()
+        sys.exit(1)
     for opt, arg in opts:
         if opt in ("-h", "--help"):
+            showBanner()
             showUsage()
+            sys.exit(0)
+        if opt in ("-V", "--version"):
+            showLicense()
             sys.exit(0)
         if opt in ("-w", "--convert-wav"):
             flags.append('w')
@@ -83,6 +92,7 @@ def getOptions():
         if opt in ('-d', '--directory'):
             flags.append('d')
     return flags, args, q
+
 
 def info(msg):
     '''print info to the screen (green)'''
@@ -172,28 +182,28 @@ class Id3TagHandler:
         except:
             return self.grabM4ATags_old()
         try:
-            self.artist = x['\xa9ART']
-        except ValueError:
+            self.artist = x['\xa9ART'][0]
+        except KeyError:
             self.artist = string.strip(self.song[:-4])
         try:
-            self.title = x['\xa9nam']
-        except ValueError:
+            self.title = x['\xa9nam'][0]
+        except KeyError:
             self.title = string.strip(self.song[:-4])
         try:
-            self.album = x['\xa9alb']
-        except ValueError:
+            self.album = x['\xa9alb'][0]
+        except KeyError:
             self.album = "n/a"
         try:
-            self.year = x['\xa9day']
-        except ValueError:
+            self.year = x['\xa9day'][0]
+        except KeyError:
             self.year = "n/a"
         try:
-            self.comment = x['\xa9cmt']
-        except ValueError:
+            self.comment = x['\xa9cmt'][0]
+        except KeyError:
             self.comment = "n/a"
         try:
-            self.genre = x['\xa9gen']
-        except ValueError:
+            self.genre = x['\xa9gen'][0]
+        except KeyError:
             self.genre = "255" # 255 = 'unknown'
 
         self.track = ""
@@ -225,7 +235,7 @@ class Id3TagHandler:
                 self.track = self.track + ",%s" % tag[13:-1]
         return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
 
-    def grabWMATags(self):
+    def grabWMATags_old(self):
         '''
         To grab real tags you need wmainfo-py
         http://badcomputer.org/code/wmainfo/
@@ -269,6 +279,51 @@ class Id3TagHandler:
             self.track = ""
         return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
 
+    def grabWMATags(self):
+        '''
+        To grab real tags you need mutagen
+        '''
+        try:
+            from mutagen.asf import ASF
+        except ImportError:
+            warn('You dont have mutagen installed...')
+            warn('Trying wmainfo-py...')
+            return grabWMATags_old()
+
+        try:
+            x = ASF(self.song)
+        except:
+            pass #  Use the defaults
+        try:
+            if 'AlbumArtist' in x:
+                self.artist = x['AlbumArtist'][0]
+            else:
+                self.artist = x['Author'][0]
+        except:
+            self.artist = string.strip(self.song[:-4])
+        try:
+            self.title = x['Title'][0]
+        except:
+            self.title = string.strip(self.song[:-4])
+        try:
+            self.album = x['AlbumTitle'][0]
+        except:
+            self.album = "n/a"
+        try:
+            self.year = x['Year'][0]
+        except:
+            self.year = "n/a"
+        self.comment = "Comment=molested by dir2ogg"
+        try:
+            self.genre = x['Genre'][0]
+        except:
+            self.genre = "255"
+        try:
+            self.track = x['TrackNumber'][0]
+        except:
+            self.track = ""
+        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
+
     def grabMP3Tags(self):
         '''
         To grab real tags you need mutagen
@@ -281,24 +336,25 @@ class Id3TagHandler:
         try:
             x = EasyID3(self.song)
         except:
+            x = {}
             pass #  Use the defaults...
         try:
             self.artist = x['artist'][0]
-        except ValueError:
+        except KeyError:
             self.artist = string.strip(self.song[:-4])
         try:
             self.title = x['title'][0]
-        except ValueError:
+        except KeyError:
             self.title = string.strip(self.song[:-4])
         try:
             self.album = x['album'][0]
-        except ValueError:
+        except KeyError:
             self.album = "n/a"
-	self.year = 'n/a'
+        self.year = 'n/a'
         self.comment = "Comment=molested by dir2ogg"
         try:
             self.genre = x['genre'][0]
-        except ValueError:
+        except KeyError:
             self.genre = "255" # 255 = 'unknown'
         try:
             self.track = x['tracknumber']
@@ -372,8 +428,10 @@ class Convert(Id3TagHandler, CleanUp):
         print self.BUFFER
         if es != 0:
             error('mplayer error!')
-            error('Decoding of "%s" failed. Corrupt wma?' % (self.song))
+            ext = self.song.split(".")[-1]
+            error('Decoding of "%s" failed. Corrupt %s?' % (self.song, ext))
             self.r3 = 0 #  don't remove the mp3
+            return es
 
 
     def mp3ToWav(self):
@@ -390,7 +448,7 @@ class Convert(Id3TagHandler, CleanUp):
             error('mpg123 error!')
             error('Decoding of "%s" failed. Corrupt mp3?' % (self.song))
             self.r3 = 0 #  don't remove the mp3
-
+    
     def m4aToWav(self):
         '''Convert m4a -> wav.'''
         info('''
@@ -401,7 +459,11 @@ class Convert(Id3TagHandler, CleanUp):
         print self.BUFFER
         es = os.system('faad "%s"' % self.song)
         print self.BUFFER
-        if es != 0:
+
+
+        if es == 32512 and self.wmaToWav() != 0:
+            self.r4 = 0
+	elif es != 0:
             error('faad error!')
             error('Decoding "%s" failed. Corrupt m4a?' % self.song)
             self.r4 = 0
@@ -537,18 +599,29 @@ def showUsage():
        '-x'  or '--delete-mp3'     delete original mp3 file
        '-qN' or '--quality=N'      quality. N is a number from 1-10 (see 'man oggenc')
        '-v'  or '--verbose'        increase dir2ogg's verbosity
+       '-V'  or '--version'        print version number and license informations
        '-h'  or '--help'           print this summary
     '''
 
 def showBanner():
-    print '''dir2ogg Version 0.9.3 (fully Web 2.0 compliant!) :: Use at your own risk.
-Written by Darren Kirby :: d@badcomputer.org :: http://badcomputer.org/unix/dir2ogg/
-Released under the Artistic License.
-    '''
+    print 'dir2ogg 0.10 beta1, (C) Julian Andres Klode and Darren Kirby. Released under GPL'
+    print
 
+def showLicense():
+    print """dir2ogg 0.10 beta1; released 2007-06-24
+
+Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>
+Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+Currently developed by Julian Andres Klode <jak@jak-linux.org>."""
 def main():
-    showBanner()
     myopts = getOptions()
+    showBanner()
     if ('.mp3') or ('.MP3') in myopts[1]:
         mp3s = (filter(myopts[1], '*.mp3')) + (filter(myopts[1], '*.MP3'))
         for s in mp3s:
@@ -611,5 +684,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-# dir2ogg version 0.9.3
