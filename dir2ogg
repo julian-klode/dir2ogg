@@ -1,22 +1,35 @@
 #!/usr/bin/python
+#
+# Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>
+# Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
-#  dir2ogg converts mp3, m4a, and wav files to the free open source OGG format. Oggs are
-#  about 20-25% smaller than mp3s with the same relative sound quality. Your mileage may vary.
+"""
+dir2ogg converts mp3, m4a, and wav files to the free open source OGG format. Oggs are
+about 20-25% smaller than mp3s with the same relative sound quality. Your mileage may vary.
 
-#  Keep in mind that converting from mp3 or m4a to ogg is a conversion between two lossy formats.
-#  This is fine if you just want to free up some disk space, but if you're a hard-core audiophile
-#  you may be dissapointed. I really can't notice a difference in quality with 'naked' ears myself.
+Keep in mind that converting from mp3 or m4a to ogg is a conversion between two lossy formats.
+This is fine if you just want to free up some disk space, but if you're a hard-core audiophile
+you may be dissapointed. I really can't notice a difference in quality with 'naked' ears myself.
 
-#  This script converts mp3s to wavs using mpg123 then converts the wavs to oggs using oggenc.
-#  m4a conversions require faad. Id3 tag support requires pyid3lib for mp3s.
-#  Scratch tags using the filename will be written for wav files (and mp3s with no tags!)
-
-#  dir2ogg is Copyright(c) Darren Kirby 2003 - 2006.
-#  WMA support thanks to Cameron Stone
-#  Released under the Artistic Licence:
-#  http://www.opensource.org/licenses/artistic-license.php
-
-#  Have fun kids!
+This script converts mp3s to wavs using mpg123 then converts the wavs to oggs using oggenc.
+m4a conversions require faad. Id3 tag support requires mutagen for mp3s.
+Scratch tags using the filename will be written for wav files (and mp3s with no tags!)
+"""
 
 import sys
 import os, os.path
@@ -103,7 +116,7 @@ class CleanUp:
 
     Note: wavs are deleted by default. use '-p' to save them.
     If you find more characters that break the script please
-    send a bug report to dir2ogg@badcomputer.org
+    post a bug report a https://bugs.launchpad.net/dir2ogg
     '''
 
     def filterShellKillers(self, ds):
@@ -154,7 +167,7 @@ class Id3TagHandler:
                 warn('You dont have mutagen installed...')
                 warn('Trying to read from faad -i')
                 return self.grabM4ATags_old()
-        try: 
+        try:
             x = MP4(self.song)
         except:
             return self.grabM4ATags_old()
@@ -265,7 +278,7 @@ class Id3TagHandler:
         except ImportError:
             warn('You dont have mutagen installed...')
             warn('Scratch tags will be created using filenames.')
-        try: 
+        try:
             x = EasyID3(self.song)
         except:
             pass #  Use the defaults...
@@ -383,7 +396,7 @@ class Convert(Id3TagHandler, CleanUp):
         info('''
         Converting from m4a to wav.
         Output from faad:
- 
+
         ''')
         print self.BUFFER
         es = os.system('faad "%s"' % self.song)
@@ -417,7 +430,7 @@ class Convert(Id3TagHandler, CleanUp):
                     es = os.system('oggenc -q"%s" -a "%s" -t "%s" "%s"' % (self.quality, self.tags[0], self.tags[1], self.songwav))
                 except:
                     warn('Sorry. No tags for you')
-                    es = os.system('oggenc -q3 "%s"' % self.songwav) 
+                    es = os.system('oggenc -q3 "%s"' % self.songwav)
         print self.BUFFER
         if es != 0:
             error('oggenc error!')
@@ -425,15 +438,15 @@ class Convert(Id3TagHandler, CleanUp):
             self.rw = 0
         if self.rw:
             self.removeSong(self.songwav)
-        if self.r3: 
+        if self.r3:
             self.removeSong(self.song)
-        if self.r4: 
+        if self.r4:
             self.removeSong(self.song)
-        if self.r5: 
+        if self.r5:
             self.removeSong(self.song)
 
 class ConvertDirectory:
-    ''' 
+    '''
     This class is just a wrapper for Convert.
 
     Grab the songs to convert, then feed them one
@@ -457,7 +470,7 @@ class ConvertDirectory:
             self.wmas = (filter(self.songs, '*.wma')) + (filter(self.songs, '*.WMA'))
         if 'w' in myopts[0]:
             self.wavs = (filter(self.songs, '*.wav')) + (filter(self.songs, '*.WAV'))
- 
+
     def printIfVerbose(self, myopts):
         ''' Echo files to be converted if verbose flag is set.'''
         info('In %s I am going to convert:' % self.d)
@@ -510,15 +523,15 @@ class ConvertDirectory:
 
 def showUsage():
     print '''Usage: dir2ogg [options] ( file1 [file2..x] || directory1 [directory2..x])
-    Options:    
+    Options:
        '-d'  or '--directory'      convert files in all directories specified as arguments
        '-r'  or '--recursive'      convert files in all subdirectories of all directories specified as arguments
        '-w'  or '--convert-wav'    convert wav files (use with '-d')
        '-p'  or '--preserve-wav'   preserve all wav files after converting to ogg
-       '-m'  or '--convert-m4a'    convert m4a files (use with '-d') 
+       '-m'  or '--convert-m4a'    convert m4a files (use with '-d')
        '-a'  or '--delete-m4a'     delete original m4a file
-       '-f'  or '--convert-wma'    convert wma files (use with '-d') 
-       '-g'  or '--delete-wma'     delete original wma file 
+       '-f'  or '--convert-wma'    convert wma files (use with '-d')
+       '-g'  or '--delete-wma'     delete original wma file
        '-s'  or '--shell-protect'  replace spaces with underscores
        '-n'  or '--no-mp3'         don't convert mp3s (use with '-d', and '-c' and/or '-m')
        '-x'  or '--delete-mp3'     delete original mp3 file

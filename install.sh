@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "$UID" -ne 0 ] 
+if [ "$UID" -ne 0 ]
 then
    echo "You are not root: terminating"
    exit 2
@@ -32,6 +32,6 @@ cp dir2ogg.1 /usr/man/man1/dir2ogg.1
 chown root:root /usr/man/man1/dir2ogg.1
 chmod 644 /usr/man/man1/dir2ogg.1
 
-    
+
 echo "dir2ogg is now installed. Enjoy..."
 
