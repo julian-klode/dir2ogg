@@ -27,7 +27,7 @@ Configuration:
  to install these libraries, or just can't be bothered, the script will still work
  and scratch tags will be created using the filename as basis.
 
- To convert M4As you need faad installed.
+ To convert M4As you need faad or mplayer installed.
  To convert WMAa you need mplayer installed
 
 Usage:
