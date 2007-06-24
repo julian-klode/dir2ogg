@@ -142,7 +142,51 @@ class Id3TagHandler:
     be created using the filename as basis.
     '''
     def grabM4ATags(self):
-        ''' For m4a's we parse output of <faad -i> '''
+        '''
+        To grab real tags you need mutagen
+        '''
+        try:
+            from mutagen.mp4 import MP4
+        except ImportError:
+            try:
+                from mutagen.m4a import M4A as MP4
+            except ImportError:
+                warn('You dont have mutagen installed...')
+                warn('Trying to read from faad -i')
+                return self.grabM4ATags_old()
+        try: 
+            x = MP4(self.song)
+        except:
+            return self.grabM4ATags_old()
+        try:
+            self.artist = x['\xa9ART']
+        except ValueError:
+            self.artist = string.strip(self.song[:-4])
+        try:
+            self.title = x['\xa9nam']
+        except ValueError:
+            self.title = string.strip(self.song[:-4])
+        try:
+            self.album = x['\xa9alb']
+        except ValueError:
+            self.album = "n/a"
+        try:
+            self.year = x['\xa9day']
+        except ValueError:
+            self.year = "n/a"
+        try:
+            self.comment = x['\xa9cmt']
+        except ValueError:
+            self.comment = "n/a"
+        try:
+            self.genre = x['\xa9gen']
+        except ValueError:
+            self.genre = "255" # 255 = 'unknown'
+
+        self.track = ""
+        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
+
+    def grabM4ATags_old(self):
         x = os.popen('faad -i "%s" 2>&1' % self.song) # faad writes ouput to stderr
         self.artist = string.strip(self.song[:-4])
         self.title = string.strip(self.song[:-4])
@@ -214,46 +258,37 @@ class Id3TagHandler:
 
     def grabMP3Tags(self):
         '''
-        To grab real tags you need pyid3lib
-        http://pyid3lib.sourceforge.net/
+        To grab real tags you need mutagen
         '''
         try:
-            import pyid3lib
+            from mutagen.easyid3 import EasyID3
         except ImportError:
-            warn('You dont have pyid3lib installed...')
+            warn('You dont have mutagen installed...')
             warn('Scratch tags will be created using filenames.')
         try: 
-            x = pyid3lib.tag(self.song)
+            x = EasyID3(self.song)
         except:
             pass #  Use the defaults...
         try:
-            self.artist = x.artist
-        except AttributeError:
+            self.artist = x['artist'][0]
+        except ValueError:
             self.artist = string.strip(self.song[:-4])
         try:
-            self.title = x.title
-        except AttributeError:
+            self.title = x['title'][0]
+        except ValueError:
             self.title = string.strip(self.song[:-4])
         try:
-            self.album = x.album
-        except AttributeError:
-            self.album = "n/a"
-        try:
-            self.year = str(x.year)
-        except AttributeError:
-            self.year = "n/a"
-        try:
-            c = x[x.index('COMM')]
-            self.comment = "Comment=" + str(c['text'])
+            self.album = x['album'][0]
         except ValueError:
-            self.comment = "Comment=molested by dir2ogg"
+            self.album = "n/a"
+	self.year = 'n/a'
+        self.comment = "Comment=molested by dir2ogg"
         try:
-            g = x[x.index('TCON')]
-            self.genre = g['text']
+            self.genre = x['genre'][0]
         except ValueError:
             self.genre = "255" # 255 = 'unknown'
         try:
-            self.track = x.track
+            self.track = x['tracknumber']
             if len(self.track) == 2:
                 self.track = str(self.track[0]) + "," + str(self.track[1])
             else:
