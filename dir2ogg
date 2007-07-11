@@ -604,11 +604,11 @@ def showUsage():
     '''
 
 def showBanner():
-    print 'dir2ogg 0.10 beta1, (C) Julian Andres Klode and Darren Kirby. Released under GPL'
+    print 'dir2ogg 0.10 RC1, (C) Julian Andres Klode and Darren Kirby. Released under GPL'
     print
 
 def showLicense():
-    print """dir2ogg 0.10 beta1; released 2007-06-24
+    print """dir2ogg 0.10 RC1; released 2007-07-11
 
 Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>
 Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>
