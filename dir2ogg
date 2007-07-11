@@ -463,7 +463,7 @@ class Convert(Id3TagHandler, CleanUp):
 
         if es == 32512 and self.wmaToWav() != 0:
             self.r4 = 0
-	elif es != 0:
+        elif es != 0:
             error('faad error!')
             error('Decoding "%s" failed. Corrupt m4a?' % self.song)
             self.r4 = 0
