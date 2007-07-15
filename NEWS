@@ -1,0 +1,8 @@
+0.10		[2007-07-15]
+=============================
+- Took over development
+- Switch to GNU General Public License
+- Use mutagen for ID3 Tags, M4A and WMA Informations
+- Support decoding of M4A files without faad
+- Fix manpage
+- Cleanups, improve readability of README
