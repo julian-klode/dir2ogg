@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+
+build:
+
+clean:
+	dh_testdir
+	dh_testroot
+	dh_clean
+
+install: 
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_install dir2ogg usr/bin
+
+# Architecture Independent
+binary-indep: build install
+	dh_testdir
+	dh_testroot
+	dh_installdocs README
+	dh_installchangelogs NEWS
+	dh_installman dir2ogg.1
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary-arch: build install
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install
