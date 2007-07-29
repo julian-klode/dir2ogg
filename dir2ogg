@@ -90,9 +90,7 @@ def getOptions():
         else:
             error("Removed: The option " + opt + " has been removed")
             sys.exit(1)
-
     return flags, args, q
-
 
 def info(msg):
     '''print info to the screen (green)'''
@@ -172,7 +170,7 @@ class Id3TagHandler:
         except ImportError:
             from mutagen.m4a import M4A as MP4
         self.grabCommon(MP4)
-        
+
     def grabWMATags(self):
         '''Import ASF tags handler, set convert and call commonGrab'''
         self.convert = {'Author': 'artist',  'AlbumTitle': 'album', 'Year': 'date'}
@@ -232,9 +230,6 @@ class Convert(Id3TagHandler, CleanUp):
         self.decoder()
         self.wavToOgg()
 
-
-
-
     def wmaToWav(self):
         ''' Convert wma -> wav.'''
         info('''
@@ -254,7 +249,6 @@ class Convert(Id3TagHandler, CleanUp):
             self.r3 = 0 #  don't remove the mp3
             return es
 
-
     def mp3ToWav(self):
         ''' Convert mp3 -> wav.'''
         info('''
@@ -269,7 +263,7 @@ class Convert(Id3TagHandler, CleanUp):
             error('mpg123 error!')
             error('Decoding of "%s" failed. Corrupt mp3?' % (self.song))
             self.r3 = 0 #  don't remove the mp3
-    
+
     def m4aToWav(self):
         '''Convert m4a -> wav.'''
         info('''
@@ -280,7 +274,6 @@ class Convert(Id3TagHandler, CleanUp):
         print self.BUFFER
         es = os.system('faad "%s"' % self.song)
         print self.BUFFER
-
 
         if es == 32512 and self.wmaToWav() != 0:
             self.r4 = 0
@@ -309,7 +302,6 @@ class Convert(Id3TagHandler, CleanUp):
         myogg = OggVorbis(self.songogg)
         myogg.update(self.tags)
         myogg.save()
-        
 
 class ConvertDirectory:
     '''
@@ -362,7 +354,6 @@ class ConvertDirectory:
             if len(self.wavs) == 0:
                 warn('No wavs in %s' % self.d)
         print
-
 
 def showUsage():
     print '''Usage: dir2ogg [options] ( file1 [file2..x] || directory1 [directory2..x])
@@ -417,7 +408,6 @@ def main():
         for directory,files in rdirs.items():
             ConvertDirectory(myopts, directory, files)
 
-        
     elif 'd' in myopts[0]:
         for d in myopts[1]:
             if os.path.exists(s) == 0:
@@ -427,7 +417,7 @@ def main():
             ConvertDirectory(myopts, d)
 
     else:
-        files  = filter(myopts[1], '*.[mM][pP]3')    + filter(myopts[1], '*.[mM]4[aA]') 
+        files  = filter(myopts[1], '*.[mM][pP]3')    + filter(myopts[1], '*.[mM]4[aA]')
         files += filter(myopts[1], '*.[wW][mM][aA]') + filter(myopts[1], '*.[wW][aA][vV]')
 
         for s in files:
@@ -437,7 +427,6 @@ def main():
 
         for s in files:
             Convert(s, myopts)
-
 
     sys.exit(0)
 
