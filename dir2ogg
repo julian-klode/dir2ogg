@@ -158,142 +158,45 @@ class CleanUp:
 
 
 class Id3TagHandler:
-    '''
-    Class for handling meta-tags.
+    '''Class for handling meta-tags.'''
+    accept = ['artist', 'title', 'album', 'date', 'comment', 'genre', 'tracknumber']
+    def grabCommon(self, handler):
+        '''Common grabber, starts the handler and applies the tags to self.tags'''
+        mydict = handler(self.song)
+        for k,v in mydict.items():
+            k = k.lower()
+            k = k in self.convert and self.convert[k] or k
+            if k in self.accept:
+                self.tags[k] = v
 
-    If there are no 'real' tags, defaults will
-    be created using the filename as basis.
-    '''
     def grabM4ATags(self):
-        '''
-        To grab real tags you need mutagen
-        '''
+        '''Import MP4 tags handler, set convert and call commonGrab'''
+        self.convert = {'\xa9alb': 'album', '\xa9ART': 'artist', '\xa9day': 'date', '\xa9nam': 'title', 'trkn': 'tracknumber', '\xa9gen': 'genre', '\xa9cmt': 'comment'}
         try:
             from mutagen.mp4 import MP4
         except ImportError:
-            try:
-                from mutagen.m4a import M4A as MP4
-            except ImportError:
-                pass
-        try:
-            x = MP4(self.song)
-        except:
-            x = {}
-        try:
-            self.artist = x['\xa9ART'][0]
-        except KeyError:
-            self.artist = string.strip(self.song[:-4])
-        try:
-            self.title = x['\xa9nam'][0]
-        except KeyError:
-            self.title = string.strip(self.song[:-4])
-        try:
-            self.album = x['\xa9alb'][0]
-        except KeyError:
-            self.album = "n/a"
-        try:
-            self.year = x['\xa9day'][0]
-        except KeyError:
-            self.year = "n/a"
-        try:
-            self.comment = x['\xa9cmt'][0]
-        except KeyError:
-            self.comment = "n/a"
-        try:
-            self.genre = x['\xa9gen'][0]
-        except KeyError:
-            self.genre = "255" # 255 = 'unknown'
-
-        self.track = ""
-        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
-
+            from mutagen.m4a import M4A as MP4
+        self.grabCommon(MP4)
+        
     def grabWMATags(self):
-        '''
-        To grab real tags you need mutagen
-        '''
-        try:
-            from mutagen.asf import ASF
-            x = ASF(self.song)
-        except ImportError:
-            pass
-
-        try:
-            if 'AlbumArtist' in x:
-                self.artist = x['AlbumArtist'][0]
-            else:
-                self.artist = x['Author'][0]
-        except:
-            self.artist = string.strip(self.song[:-4])
-        try:
-            self.title = x['Title'][0]
-        except:
-            self.title = string.strip(self.song[:-4])
-        try:
-            self.album = x['AlbumTitle'][0]
-        except:
-            self.album = "n/a"
-        try:
-            self.year = x['Year'][0]
-        except:
-            self.year = "n/a"
-        self.comment = "Comment=molested by dir2ogg"
-        try:
-            self.genre = x['Genre'][0]
-        except:
-            self.genre = "255"
-        try:
-            self.track = x['TrackNumber'][0]
-        except:
-            self.track = ""
-        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
+        '''Import ASF tags handler, set convert and call commonGrab'''
+        self.convert = {'Author': 'artist',  'AlbumTitle': 'album', 'Year': 'date'}
+        from mutagen.asf import ASF
+        self.grabCommon(ASF)
 
     def grabMP3Tags(self):
-        '''
-        To grab real tags you need mutagen
-        '''
-        try:
-            from mutagen.easyid3 import EasyID3
-            x = EasyID3(self.song)
-        except ImportError:
-            x = {}
-
-        try:
-            self.artist = x['artist'][0]
-        except KeyError:
-            self.artist = string.strip(self.song[:-4])
-        try:
-            self.title = x['title'][0]
-        except KeyError:
-            self.title = string.strip(self.song[:-4])
-        try:
-            self.album = x['album'][0]
-        except KeyError:
-            self.album = "n/a"
-        self.year = 'n/a'
-        self.comment = "Comment=molested by dir2ogg"
-        try:
-            self.genre = x['genre'][0]
-        except KeyError:
-            self.genre = "255" # 255 = 'unknown'
-        try:
-            self.track = x['tracknumber']
-            if len(self.track) == 2:
-                self.track = str(self.track[0]) + "," + str(self.track[1])
-            else:
-                self.track = str(self.track[0])
-        except:
-            self.track = ""
-        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
+        '''Import MP3 tags handler, and call commonGrab'''
+        self.convert = {}
+        from mutagen.easyid3 import EasyID3
+        self.grabCommon(EasyID3)
 
     def listIfVerbose(self):
         info('Meta-tags I will write:')
-        info('Artist: ' + self.artist)
-        info('Title: ' + self.title)
-        info('Album: ' + self.album)
-        info('Year: ' + self.year)
-        info('Comment: ' + self.comment[8:])
-        info('Genre: ' + self.genre)
-        info('Track Num: ' + str(self.track))
+        for k,v in self.tags.items():
+            if type(v) == list:
+                info(k + ': ' + ','.join(v))
+            else:
+                info(k + ': ' + v)
 
 class Convert(Id3TagHandler, CleanUp):
     '''
@@ -317,12 +220,12 @@ class Convert(Id3TagHandler, CleanUp):
         self.songogg = songRoot + ogg
         self.quality = myopts[2]
         self.BUFFER = '#' * 78
-        if self.song[-4:] == '.m4a':
-            self.tags = self.grabM4ATags()
+        if self.song[-4:] in ('.m4a', '.mp4'):
+            self.grabM4ATags()
         elif self.song[-4:] == '.wma':
-            self.tags = self.grabWMATags()
+            self.grabWMATags()
         else:
-            self.tags = self.grabMP3Tags()
+            self.grabMP3Tags()
         self.r3 = self.r4 = self.r5 = self.rw = 0
         if not 'p' in myopts[0]:
             self.rw = 1 #  remove wav (default)
@@ -415,7 +318,7 @@ class Convert(Id3TagHandler, CleanUp):
         # Add tags to the ogg file
         from mutagen.oggvorbis import OggVorbis
         myogg = OggVorbis(self.songogg)
-        myogg['artist'], myogg['title'], myogg['album'], myogg['date'], myogg['comment'], myogg['genre'] , myogg['tracknumber'] = self.tags
+        myogg.update(self.tags)
         myogg.save()
         
 
@@ -516,11 +419,11 @@ def showUsage():
     '''
 
 def showBanner():
-    print 'dir2ogg 0.10.1, (C) Julian Andres Klode and Darren Kirby. Released under GPL'
+    print 'dir2ogg 0.11 alpha 1, (C) Julian Andres Klode and Darren Kirby. Released under GPL'
     print
 
 def showLicense():
-    print """dir2ogg 0.10.1; released 2007-07-18
+    print """dir2ogg 0.11 alpha 1; released 2007-07-29
 
 Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>
 Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>
