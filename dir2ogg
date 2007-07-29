@@ -44,7 +44,7 @@ def getOptions():
     try:
         opts, args = gnu_getopt(sys.argv[1:], "dwmfpxagsnvrhVq:", ["directory",
                      "convert-wav", "convert-m4a", "convert-wma", "preserve-wav",
-                     "delete-mp3", "delete-m4a", "delete-wma", "shell-protect",
+                     "delete-input", "delete-mp3", "delete-m4a", "delete-wma", "shell-protect",
                      "no-mp3", "verbose", "recursive", "help", "version", "quality="])
     except GetoptError:
         error("Invalid option(s)")
@@ -62,35 +62,35 @@ def getOptions():
             showBanner()
             showUsage()
             sys.exit(0)
-        if opt in ("-V", "--version"):
+        elif opt in ("-V", "--version"):
             showLicense()
             sys.exit(0)
-        if opt in ("-w", "--convert-wav"):
+        elif opt in ("-w", "--convert-wav"):
             flags.append('w')
-        if opt in ("-m", "--convert-m4a"):
+        elif opt in ("-m", "--convert-m4a"):
             flags.append('m')
-        if opt in ("-f", "--convert-wma"):
+        elif opt in ("-f", "--convert-wma"):
             flags.append('f')
-        if opt in ("-p", "--preserve-wav"):
+        elif opt in ("-p", "--preserve-wav"):
             flags.append('p')
-        if opt in ("-x", "--delete-mp3"):
-            flags.append('x')
-        if opt in ("-a", "--delete-m4a"):
-            flags.append('a')
-        if opt in ("-g", "--delete-wma"):
+        elif opt in ("-c", "--delete-input"):
             flags.append('g')
-        if opt in ("-s", "--shell-protect"):
+        elif opt in ("-s", "--shell-protect"):
             flags.append('s')
-        if opt in ("-n", "--no-mp3"):
+        elif opt in ("-n", "--no-mp3"):
             flags.append('n')
-        if opt in ("-v", "--verbose"):
+        elif opt in ("-v", "--verbose"):
             flags.append('v')
-        if opt in ("-r", "--recursive"):
+        elif opt in ("-r", "--recursive"):
             flags.append('r')
-        if opt in ("-q", "--quality"):
+        elif opt in ("-q", "--quality"):
             q = arg
-        if opt in ('-d', '--directory'):
+        elif opt in ('-d', '--directory'):
             flags.append('d')
+        else:
+            error("Removed: The option " + opt + " has been removed")
+            sys.exit(1)
+
     return flags, args, q
 
 
@@ -228,13 +228,10 @@ class Convert(Id3TagHandler, CleanUp):
             self.grabMP3Tags()
         self.r3 = self.r4 = self.r5 = self.rw = 0
         if not 'p' in myopts[0]:
-            self.rw = 1 #  remove wav (default)
-        if 'x' in myopts[0]:
-            self.r3 = 1 #  remove mp3
-        if 'a' in myopts[0]:
-            self.r4 = 1 #  remove m4a
+            self.rw = 1
         if 'g' in myopts[0]:
-            self.r5 = 1 #  remove wma
+            self.ri = 1
+
 
     def wmaToWav(self):
         ''' Convert wma -> wav.'''
@@ -406,9 +403,8 @@ def showUsage():
        '-w'  or '--convert-wav'    convert wav files (use with '-d')
        '-p'  or '--preserve-wav'   preserve all wav files after converting to ogg
        '-m'  or '--convert-m4a'    convert m4a files (use with '-d')
-       '-a'  or '--delete-m4a'     delete original m4a file
        '-f'  or '--convert-wma'    convert wma files (use with '-d')
-       '-g'  or '--delete-wma'     delete original wma file
+       '-g'  or '--delete-input'   delete the input file(s)
        '-s'  or '--shell-protect'  replace spaces with underscores
        '-n'  or '--no-mp3'         don't convert mp3s (use with '-d', and '-c' and/or '-m')
        '-x'  or '--delete-mp3'     delete original mp3 file
