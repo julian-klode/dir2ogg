@@ -1,3 +1,8 @@
+0.10.1		[2007-07-18]
+=============================
+- Use mutagen to write tags to the ogg file.
+- Fix the manpage
+
 0.10		[2007-07-15]
 =============================
 - Took over development
