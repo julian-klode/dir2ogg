@@ -73,7 +73,7 @@ def getOptions():
             flags.append('f')
         elif opt in ("-p", "--preserve-wav"):
             flags.append('p')
-        elif opt in ("-c", "--delete-input"):
+        elif opt in ("-x", "--delete-input"):
             flags.append('g')
         elif opt in ("-s", "--shell-protect"):
             flags.append('s')
@@ -113,12 +113,11 @@ def error(msg):
     os.system('echo -en $"\\033[0;39m"')
 
 def returnDirs(root):
-    mydirs = []
+    mydirs = {}
     for pdir, dirs, files in os.walk(root):
         if not pdir in mydirs:
-            mydirs.append(pdir)
+            mydirs[pdir] = files
     return mydirs
-
 
 class CleanUp:
     '''
@@ -152,10 +151,6 @@ class CleanUp:
         song = string.replace(songSpaces, ' ', '_')
         os.rename(songSpaces, song)
         return song
-
-    def removeSong(self, song):
-        os.remove(song)
-
 
 class Id3TagHandler:
     '''Class for handling meta-tags.'''
@@ -213,6 +208,10 @@ class Convert(Id3TagHandler, CleanUp):
             self.vf = 1
         if 's' in myopts[0]:
             song = self.escapeShell(song)
+        if not 'p' in myopts[0]:
+            self.rw = 1
+        if 'g' in myopts[0]:
+            self.ri = 1
         self.song = self.filterShellKillers(song)
         songRoot = string.strip(self.song[:-3])
         wav, ogg = 'wav', 'ogg'
@@ -220,17 +219,20 @@ class Convert(Id3TagHandler, CleanUp):
         self.songogg = songRoot + ogg
         self.quality = myopts[2]
         self.BUFFER = '#' * 78
-        if self.song[-4:] in ('.m4a', '.mp4'):
-            self.grabM4ATags()
-        elif self.song[-4:] == '.wma':
-            self.grabWMATags()
-        else:
+
+        if fnmatch(self.song, '*.[mM][pP]3'):
             self.grabMP3Tags()
-        self.r3 = self.r4 = self.r5 = self.rw = 0
-        if not 'p' in myopts[0]:
-            self.rw = 1
-        if 'g' in myopts[0]:
-            self.ri = 1
+            self.decoder=self.mp3ToWav
+        elif fnmatch(self.song, '*.[mM]4[aA]'):
+            self.grabM4ATags()
+            self.decoder=self.m4aToWav
+        elif fnmatch(self.song, '*.[wW][mM][aA]'):
+            self.grabWMATags()
+            self.decoder = self.wmaToWav
+        self.decoder()
+        self.wavToOgg()
+
+
 
 
     def wmaToWav(self):
@@ -291,27 +293,17 @@ class Convert(Id3TagHandler, CleanUp):
         ''' Convert wav -> ogg.'''
         if self.vf:
             self.listIfVerbose()
-        info('''
-        Converting from wav to ogg.
-        Output from oggenc:
-
-        ''')
-
+        info('Converting from wav to ogg. - Output from oggenc:')
         print self.BUFFER
-        es = os.system('oggenc -q3 "%s"' % self.songwav)
-        print self.BUFFER
-        if es != 0:
-            error('oggenc error!')
-            error('Encoding of "%s" failed.' % self.songwav)
-            self.rw = 0
-        if self.rw:
-            self.removeSong(self.songwav)
-        if self.r3:
-            self.removeSong(self.song)
-        if self.r4:
-            self.removeSong(self.song)
-        if self.r5:
-            self.removeSong(self.song)
+        if self.songwav:
+            es = os.system('oggenc -q3 "%s"' % self.songwav)
+            print self.BUFFER
+            if es != 0:
+                error('Encoding of "%s" failed.' % self.songwav)
+            elif self.rw:
+                os.remove(self.songwav)
+        if self.ri:
+            os.remove(self.song)
         # Add tags to the ogg file
         from mutagen.oggvorbis import OggVorbis
         myogg = OggVorbis(self.songogg)
@@ -327,23 +319,24 @@ class ConvertDirectory:
     by one to the Convert class.
     '''
 
-    def __init__(self, myopts, d):
+    def __init__(self, myopts, d, files=None):
         ''' Decide which files will be converted.'''
         if os.path.exists(d) == 0:
             error('Directory: "%s" not found' % d)
             sys.exit(1)
-        os.chdir(d)
-        self.d = d
-        self.songs = os.listdir(os.getcwd())
-        self.songs.sort()
-        if not 'n' in myopts[0]:
-            self.mp3s = (filter(self.songs, '*.mp3')) + (filter(self.songs, '*.MP3'))
-        if 'm' in myopts[0]:
-            self.m4as = (filter(self.songs, '*.m4a')) + (filter(self.songs, '*.M4A'))
-        if 'f' in myopts[0]:
-            self.wmas = (filter(self.songs, '*.wma')) + (filter(self.songs, '*.WMA'))
-        if 'w' in myopts[0]:
-            self.wavs = (filter(self.songs, '*.wav')) + (filter(self.songs, '*.WAV'))
+
+        self.d = d = os.path.normpath(d) + os.path.sep
+        self.songs = files and files or os.listdir(d)
+        self.m4as  = 'm' in myopts[0] and filter(self.songs, '*.[mM]4[aA]') or []
+        self.mp3s  = 'n' in myopts[0] and [] or filter(self.songs, '*.[mM][pP]3')
+        self.wavs  = 'w' in myopts[0] and filter(self.songs, '*.[wW][aA][vV]') or []
+        self.wmas  = 'f' in myopts[0] and filter(self.songs, '*.[wW][mM][aA]') or []
+
+        if 'v' in myopts[0]:
+            self.printIfVerbose(myopts)
+
+        for m4a in self.wmas +  self.mp3s + self.wavs + self.m4as:
+            Convert(d + m4a, myopts)
 
     def printIfVerbose(self, myopts):
         ''' Echo files to be converted if verbose flag is set.'''
@@ -370,30 +363,6 @@ class ConvertDirectory:
                 warn('No wavs in %s' % self.d)
         print
 
-    def thruTheRinger(self, myopts):
-        ''' Not much happening here.'''
-        if 'v' in myopts[0]:
-            self.printIfVerbose(myopts)
-        if not 'n' in myopts[0]:
-            for mp3 in self.mp3s:
-                x = Convert(mp3, myopts)
-                x.mp3ToWav()
-                x.wavToOgg()
-        if 'f' in myopts[0]:
-            for wma in self.wmas:
-                x = Convert(wma, myopts)
-                x.wmaToWav()
-                x.wavToOgg()
-        if 'm' in myopts[0]:
-            for m4a in self.m4as:
-                x = Convert(m4a, myopts)
-                x.m4aToWav()
-                x.wavToOgg()
-        if 'w' in myopts[0]:
-            for wav in self.wavs:
-                x = Convert(wav, myopts)
-                x.wavToOgg()
-
 
 def showUsage():
     print '''Usage: dir2ogg [options] ( file1 [file2..x] || directory1 [directory2..x])
@@ -404,10 +373,9 @@ def showUsage():
        '-p'  or '--preserve-wav'   preserve all wav files after converting to ogg
        '-m'  or '--convert-m4a'    convert m4a files (use with '-d')
        '-f'  or '--convert-wma'    convert wma files (use with '-d')
-       '-g'  or '--delete-input'   delete the input file(s)
-       '-s'  or '--shell-protect'  replace spaces with underscores
        '-n'  or '--no-mp3'         don't convert mp3s (use with '-d', and '-c' and/or '-m')
-       '-x'  or '--delete-mp3'     delete original mp3 file
+       '-x'  or '--delete-input'   delete the input file(s)
+       '-s'  or '--shell-protect'  replace spaces with underscores
        '-qN' or '--quality=N'      quality. N is a number from 1-10 (see 'man oggenc')
        '-v'  or '--verbose'        increase dir2ogg's verbosity
        '-V'  or '--version'        print version number and license informations
@@ -430,67 +398,47 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 Currently developed by Julian Andres Klode <jak@jak-linux.org>."""
+
 def main():
     myopts = getOptions()
     showBanner()
-    if ('.mp3') or ('.MP3') in myopts[1]:
-        mp3s = (filter(myopts[1], '*.mp3')) + (filter(myopts[1], '*.MP3'))
-        for s in mp3s:
-            if os.path.exists(s) == 0:
-                error('File: "%s" not found' % s)
-                sys.exit(1)
-            x = Convert(s, myopts)
-            x.mp3ToWav()
-            x.wavToOgg()
-    if ('.m4a') or ('.M4A') in myopts[1]:
-        m4as = (filter(myopts[1], '*.m4a')) + (filter(myopts[1], '*.M4A'))
-        for s in m4as:
-            if os.path.exists(s) == 0:
-                error('File: "%s" not found' % s)
-                sys.exit(1)
-            x = Convert(s, myopts)
-            x.m4aToWav()
-            x.wavToOgg()
-    if ('.wma') or ('.WMA') in myopts[1]:
-        wmas = (filter(myopts[1], '*.wma')) + (filter(myopts[1], '*.WMA'))
-        for s in wmas:
-            if os.path.exists(s) == 0:
-                error('File: "%s" not found' % s)
-                sys.exit(1)
-            x = Convert(s, myopts)
-            x.wmaToWav()
-            x.wavToOgg()
-    if ('.wav') or ('.WAV') in myopts[1]:
-        wavs = (filter(myopts[1], '*.wav')) + (filter(myopts[1], '*.WAV'))
-        for s in wavs:
-            if os.path.exists(s) == 0:
-                error('File: "%s" not found' % s)
-                sys.exit(1)
-            x = Convert(s, myopts)
-            x.wavToOgg()
+
     if 'r' in myopts[0]:
-        rdirs = []
+        rdirs = {}
         for d in myopts[1]:
             if os.path.exists(d) == 0:
                 error('Directory: "%s" not found' % d)
                 sys.exit(1)
             l = returnDirs(d)
-            rdirs += l
+            rdirs.update(l)
         if len(rdirs) == 0:
             error('No files to convert!')
             sys.exit(1)
-        for directory in rdirs:
-            cwd = os.getcwd()
-            x = ConvertDirectory(myopts, directory)
-            x.thruTheRinger(myopts)
-            os.chdir(cwd)
-        sys.exit(0)
-    if 'd' in myopts[0]:
+        for directory,files in rdirs.items():
+            ConvertDirectory(myopts, directory, files)
+
+        
+    elif 'd' in myopts[0]:
         for d in myopts[1]:
-            cwd = os.getcwd()
-            x = ConvertDirectory(myopts, d)
-            x.thruTheRinger(myopts)
-            os.chdir(cwd)
+            if os.path.exists(s) == 0:
+                error('Directory: "%s" not found' % s)
+                sys.exit(1)
+        for d in myopts[1]:
+            ConvertDirectory(myopts, d)
+
+    else:
+        files  = filter(myopts[1], '*.[mM][pP]3')    + filter(myopts[1], '*.[mM]4[aA]') 
+        files += filter(myopts[1], '*.[wW][mM][aA]') + filter(myopts[1], '*.[wW][aA][vV]')
+
+        for s in files:
+            if os.path.exists(s) == 0:
+                error('File: "%s" not found' % s)
+                sys.exit(1)
+
+        for s in files:
+            Convert(s, myopts)
+
+
     sys.exit(0)
 
 if __name__ == '__main__':
