@@ -175,12 +175,11 @@ class Id3TagHandler:
                 from mutagen.m4a import M4A as MP4
             except ImportError:
                 warn('You dont have mutagen installed...')
-                warn('Trying to read from faad -i')
-                return self.grabM4ATags_old()
+                warn('Scratch tags will be created using filenames.')
         try:
             x = MP4(self.song)
         except:
-            return self.grabM4ATags_old()
+            x = {}
         try:
             self.artist = x['\xa9ART'][0]
         except KeyError:
@@ -209,76 +208,6 @@ class Id3TagHandler:
         self.track = ""
         return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
 
-    def grabM4ATags_old(self):
-        x = os.popen('faad -i "%s" 2>&1' % self.song) # faad writes ouput to stderr
-        self.artist = string.strip(self.song[:-4])
-        self.title = string.strip(self.song[:-4])
-        self.album = "n/a"
-        self.year = "n/a"
-        self.comment = "Comment=molested by dir2ogg"
-        self.genre = "255"
-        self.track = ""
-        for tag in x:
-            if 'artist:' in tag:
-                self.artist = tag[8:-1]
-            if 'title:' in tag:
-                self.title = tag[7:-1]
-            if 'album:' in tag:
-                self.album = tag[7:-1]
-            if 'date:' in tag:
-                self.year = tag[6:-1]
-            if 'genre:' in tag:
-                self.genre = tag[7:-1]
-            if 'track:' in tag:
-                self.track = tag[7:-1]
-            if 'totaltracks:' in tag:
-                self.track = self.track + ",%s" % tag[13:-1]
-        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
-
-    def grabWMATags_old(self):
-        '''
-        To grab real tags you need wmainfo-py
-        http://badcomputer.org/code/wmainfo/
-        '''
-        try:
-            import wmainfo
-        except ImportError:
-            warn('You dont have wmainfo-py installed...')
-            warn('Scratch tags will be created using filenames.')
-        try:
-            x = wmainfo.WmaInfo(self.song)
-        except:
-            pass #  Use the defaults
-        try:
-            if x.hastag('AlbumArtist'):
-                self.artist = x.tags['AlbumArtist']
-            else:
-                self.artist = x.tags['Author']
-        except:
-            self.artist = string.strip(self.song[:-4])
-        try:
-            self.title = x.tags['Title']
-        except:
-            self.title = string.strip(self.song[:-4])
-        try:
-            self.album = x.tags['AlbumTitle']
-        except:
-            self.album = "n/a"
-        try:
-            self.year = x.tags['Year']
-        except:
-            self.year = "n/a"
-        self.comment = "Comment=molested by dir2ogg"
-        try:
-            self.genre = x.tags['Genre']
-        except:
-            self.genre = "255"
-        try:
-            self.track = x.tags['TrackNumber']
-        except:
-            self.track = ""
-        return self.artist, self.title, self.album, self.year, self.comment, self.genre, self.track
-
     def grabWMATags(self):
         '''
         To grab real tags you need mutagen
@@ -287,9 +216,7 @@ class Id3TagHandler:
             from mutagen.asf import ASF
         except ImportError:
             warn('You dont have mutagen installed...')
-            warn('Trying wmainfo-py...')
-            return grabWMATags_old()
-
+            warn('Scratch tags will be created using filenames.')
         try:
             x = ASF(self.song)
         except:
