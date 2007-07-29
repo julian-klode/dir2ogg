@@ -174,8 +174,7 @@ class Id3TagHandler:
             try:
                 from mutagen.m4a import M4A as MP4
             except ImportError:
-                warn('You dont have mutagen installed...')
-                warn('Scratch tags will be created using filenames.')
+                pass
         try:
             x = MP4(self.song)
         except:
@@ -214,13 +213,10 @@ class Id3TagHandler:
         '''
         try:
             from mutagen.asf import ASF
-        except ImportError:
-            warn('You dont have mutagen installed...')
-            warn('Scratch tags will be created using filenames.')
-        try:
             x = ASF(self.song)
-        except:
-            pass #  Use the defaults
+        except ImportError:
+            pass
+
         try:
             if 'AlbumArtist' in x:
                 self.artist = x['AlbumArtist'][0]
@@ -257,14 +253,10 @@ class Id3TagHandler:
         '''
         try:
             from mutagen.easyid3 import EasyID3
-        except ImportError:
-            warn('You dont have mutagen installed...')
-            warn('Scratch tags will be created using filenames.')
-        try:
             x = EasyID3(self.song)
-        except:
+        except ImportError:
             x = {}
-            pass #  Use the defaults...
+
         try:
             self.artist = x['artist'][0]
         except KeyError:
