@@ -1,4 +1,24 @@
-dir2ogg (0.11~alpha1) UNRELEASED; urgency=low
+dir2ogg (0.11~alpha2) RELEASED; urgency=low
+
+  * NEW Features:
+    - Support for FLAC files
+    - New tags: 'discid', 'musicbrainz_discid', 'musicbrainz_sortname',
+      'tracktotal'
+  * New commandline and config class
+    - Use optparse to parse options
+    - check which decoders to use at startup
+  * More flexible Convert class:
+    - Use subprocess instead of os.system
+    - Support pipes (except for mplayer)
+  * Removal of unneeded functions and classes:
+    - RM: CleanUp      - Filter filenames (not needed anymore by subprocess)
+    - RM: getOptions() - Options parser, replaced with MyConfig
+    - RM: showUsage()  - Print options summary, done by optparse
+  * Less code: 90 lines less then alpha1
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Sun, 05 Aug 2007 12:15:20 +0200
+
+dir2ogg (0.11~alpha1) RELEASED; urgency=low
 
   * NEWS: Redesigned, using debian changelog style (easier for me)
   * Redesigned tag support to support multiple values per key (- ca. 90 lines)

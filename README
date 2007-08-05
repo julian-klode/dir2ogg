@@ -1,4 +1,4 @@
-dir2ogg: version 0.10
+dir2ogg: version 0.11alpha2
 
 Manifest:
  README     - You're reading it now.
@@ -18,18 +18,13 @@ Installation:
  To install simply run:
   sh install.sh
 
-Configuration:
- dir2ogg supports MP3 ID3 tag preservation, but you will need mutagen, which is
- a module that isn't in the standard library. It can be freely obtained from
- http://www.sacredchao.net/quodlibet/wiki/Development/Mutagen.
- To preserve WMA meta-tags you will need mutagen (>= 0.10) or
- wmainfo-py library from http://badcomputer.org/code/wmainfo/. If you choose not
- to install these libraries, or just can't be bothered, the script will still work
- and scratch tags will be created using the filename as basis.
-
- To convert M4As you need faad or mplayer installed.
- To convert WMAa you need mplayer installed
-
+Requirements:
+ - Tag preservation: mutagen (http://www.sacredchao.net/quodlibet/wiki/Development/Mutagen)
+ - M4A Conversion: faad or mplayer
+ - WMA Conversion: Mplayer
+ - MP3 Conversion: mpg123, mpg321 or mplayer
+ - FLAC Conversion: no extra software required (ogg123 from vorbis-tools)
+ 
 Usage:
  Read the manpage for detailed instructions: "man dir2ogg", or type "dir2ogg
  --help" for brief usage details. The script is extremely simple, so you
@@ -52,7 +47,7 @@ Usage:
  I am just lazy and can't be bothered to do this myself :)
 
 Bugs:
- See the manpage. Please post bug reports at https://bugs.launchpad.net/dir2ogg
+ See the manpage. Please report bugs at https://bugs.launchpad.net/dir2ogg
 
 License and Disclaimer:
  Copyright (c) 2007 Julian Andres Klode
@@ -81,4 +76,4 @@ Authors:
   Cameron Stone <camerons@cse.unsw.edu.au>
 
 Date:
- June 24, 2007
+ August 03, 2007
