@@ -1,3 +1,18 @@
+dir2ogg (0.11~alpha2-1) experimental; urgency=low
+
+  * New development release with new features:
+    - FLAC as input format
+    - Use pipes for decoding/encoding (disable with --no-pipes)
+    - Use subprocess.* to run decoders/encoders
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Mon, 06 Aug 2007 16:23:42 +0200
+
+dir2ogg (0.10.2-1) unstable; urgency=low
+
+  * bugfix release: pass --quality=N to oggenc
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Sun, 29 Jul 2007 20:38:14 +0200
+
 dir2ogg (0.10.1-1) unstable; urgency=low
 
   * Initial upload into Debian main (Closes: #428188). This package is based
