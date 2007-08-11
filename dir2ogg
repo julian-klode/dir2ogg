@@ -77,7 +77,7 @@ class MyConfig:
         commands = {'mp3': ('mpg123', 'mpg321', 'mplayer'),
                     'wma': ('mplayer',),
                     'm4a': ('faad', 'mplayer'),
-                    'flac': ('aogg123', 'amplayer')
+                    'flac': ('flac', 'ogg123', 'mplayer')
                    }
         for ext, dec in commands.items():
             self.__dict__[ext + '_decoder'] = None
@@ -216,6 +216,7 @@ class Convert(Id3TagHandler):
         mpg321  = ['mpg321', '-w', outfile, self.song]
         faad    = ['faad',  '-o' , outfile1, self.song]
         ogg123  = ['ogg123', '-dwav', '-f' , outfile, self.song]
+        flac    = ['flac', '-o', outfile, '-d', self.song]
         mplayer = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, self.song]
         exec('cmd =' + self.decoder)
 
