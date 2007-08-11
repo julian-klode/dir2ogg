@@ -261,7 +261,7 @@ class Convert(Id3TagHandler):
                 return False
             elif not self.conf.preserve_wav and self.song != self.songwav:
                 os.remove(self.songwav)
-        if self.tags:
+        if self.tags != {}:
             try:
                 # Add tags to the ogg file
                 from mutagen.oggvorbis import OggVorbis
@@ -271,6 +271,8 @@ class Convert(Id3TagHandler):
             except:
                 error('Could not save the tags')
                 return False
+        else:
+            warn('No tags found...')
             
         if self.conf.clean_up:
             os.remove(self.song)
