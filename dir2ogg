@@ -61,7 +61,7 @@ class MyConfig:
         parser.add_option('-m', '--convert-m4a', action='store_true', help="convert m4a files (use with '-d')")
         parser.add_option('-w', '--convert-wav', action='store_true', help="convert wav files (use with '-d')")
         parser.add_option('-f', '-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
-        parser.add_option('-c', '--clean-up', action='store_true', help='delete input files')
+        parser.add_option('--delete-input', action='store_true', help='delete input files')
         parser.add_option('-p', '--preserve-wav',action='store_true', help='keep the wav files (also includes -P)')
         parser.add_option('-P', '--no-pipe',action='store_true', help='Do not use pipes, use temporary wav files')
         parser.add_option('-v', '--verbose',action='store_true', help='verbose output')
