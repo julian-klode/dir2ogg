@@ -66,6 +66,14 @@ class MyConfig:
         parser.add_option('-P', '--no-pipe',action='store_true', help='Do not use pipes, use temporary wav files')
         parser.add_option('-v', '--verbose',action='store_true', help='verbose output')
         options, self.args = parser.parse_args()
+        if filter(self.args, '*.[mM][pP]3') :
+            options.convert_mp3 = True
+        elif filter(self.args, '*.[mM]4[aA]'):
+            options.convert_m4a = True
+        elif filter(self.args, '*.[wW][mM][aA]'):
+            options.convert_wma = True
+        elif filter(self.args, '*.[fF][lL][aA][cC]'):
+            options.convert_flac = True
         self.__dict__.update(options.__dict__)
         self.checkDecoder()
 
@@ -91,10 +99,7 @@ class MyConfig:
                 fatal('%s was enabled, but no decoder has been found.' % ext)
 
 def info(msg):
-    '''print info to the screen (green)'''
-    #call(['echo', '-en', '\\033[1;32m'])
     print 'I: %s' % msg
-    #call(['echo', '-en', '\\033[0;39m'])
 
 def warn(msg, i="W:", e=''):
     '''print errors to the screen (red)'''
@@ -189,7 +194,6 @@ class Convert(Id3TagHandler):
         songRoot     = os.path.splitext(song)[0] + "."
         self.songwav = songRoot + 'wav'
         self.songogg = songRoot + 'ogg'
-        if self.songogg == self.song: self.songogg += ".ogg"
         self.BUFFER  = '#' * 78
         if fnmatch(self.song, '*.[mM][pP]3') :
             self.decoder = self.conf.mp3_decoder
