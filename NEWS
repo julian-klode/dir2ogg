@@ -1,3 +1,9 @@
+dir2ogg (0.11~alpha3) UNRELEASED; urgency=low
+
+  * Bugfix: Enable conversion of MP3 files
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Sat, 11 Aug 2007 14:38:04 +0200
+
 dir2ogg (0.11~alpha2) RELEASED; urgency=low
 
   * NEW Features:
