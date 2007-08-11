@@ -216,18 +216,18 @@ class Convert(Id3TagHandler):
         else:
             outfile = outfile1 = self.songwav
             use_pipe = 0
-        mpg123  = ['mpg123', '-w', outfile, self.song]
-        mpg321  = ['mpg321', '-w', outfile, self.song]
-        faad    = ['faad',  '-o' , outfile1, self.song]
-        ogg123  = ['ogg123', '-dwav', '-f' , outfile, self.song]
-        flac    = ['flac', '-o', outfile, '-d', self.song]
-        mplayer = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, self.song]
-        exec('cmd =' + self.decoder)
+        decoder            = {}
+        decoder['mpg123']  = ['mpg123', '-w', outfile, self.song]
+        decoder['mpg321']  = ['mpg321', '-w', outfile, self.song]
+        decoder['faad']    = ['faad',  '-o' , outfile1, self.song]
+        decoder['ogg123']  = ['ogg123', '-dwav', '-f' , outfile, self.song]
+        decoder['flac']    = ['flac', '-o', outfile, '-d', self.song]
+        decoder['mplayer'] = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, self.song]
 
         if use_pipe:
-            return True, Popen(cmd, stdout=PIPE)
+            return True, Popen(decoder[self.decoder], stdout=PIPE)
         else:
-            retcode = call(cmd)
+            retcode = call(decoder[self.decoder])
             if retcode != 0:
                 return (False, None)
             else:
@@ -248,7 +248,6 @@ class Convert(Id3TagHandler):
             enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality), '-'], stdin=dec.stdout)
             enc.communicate()
             dec.wait()
-            enc.wait()
             if dec.returncode < 0:
                 error('Decoding of "%s" failed.' % self.song)
                 return False

@@ -4,8 +4,10 @@ dir2ogg (0.11~alpha3) UNRELEASED; urgency=low
   * FLAC: Fix names of the decoders and add 'flac -d' as an decoder
   * Bugfix: Check for decoders for files specified on commandline
   * Rename --clean-up to --delete-input and remove -c
+  * Save decoder commands in a dict, remove exec call
+  * Remove enc.wait()
 
- -- Julian Andres Klode <jak@jak-linux.org>  Sat, 11 Aug 2007 16:19:41 +0200
+ -- Julian Andres Klode <jak@jak-linux.org>  Sat, 11 Aug 2007 16:20:56 +0200
 
 dir2ogg (0.11~alpha2) RELEASED; urgency=low
 
