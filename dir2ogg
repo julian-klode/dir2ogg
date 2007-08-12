@@ -39,8 +39,8 @@ from fnmatch import filter, fnmatch
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11alpha2'
-__date__    = '2007-08-05'
+__version__ = '0.11alpha3'
+__date__    = '2007-08-12'
 
 class MyConfig:
     def __init__(self):
@@ -55,6 +55,7 @@ class MyConfig:
         parser.add_option('-l', '--license',action='callback', callback=showLicense, help='display license informations')
         parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments')
         parser.add_option('-r', '--recursive', action='store_true', help='convert files in all subdirectories of all directories specified as arguments')
+        parser.add_option('-c', '--cdda', action='store_true', help="convert an audio cd (device may be specified as an argument, default: /dev/cdrom) [EXPERIMENTAL]")
         parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
         parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
         parser.add_option('--convert-flac',action='store_true', help="convert flac files (use with '-d')")
@@ -75,17 +76,18 @@ class MyConfig:
         elif filter(self.args, '*.[fF][lL][aA][cC]'):
             options.convert_flac = True
         self.__dict__.update(options.__dict__)
+        self.convert_cd = self.cdda
         self.checkDecoder()
-
-        if len(self.args) == 0:
+        if len(self.args) == 0 and not self.cdda:
             fatal('No files/directories specified.')
-        
+
     def checkDecoder(self):
         '''Set the decoder'''
         commands = {'mp3': ('mpg123', 'mpg321', 'mplayer'),
                     'wma': ('mplayer',),
                     'm4a': ('faad', 'mplayer'),
-                    'flac': ('flac', 'ogg123', 'mplayer')
+                    'flac': ('flac', 'ogg123', 'mplayer'),
+                    'cd':  ('cdparanoia', 'icedax','cdda2wav')
                    }
         for ext, dec in commands.items():
             self.__dict__[ext + '_decoder'] = None
@@ -232,7 +234,7 @@ class Convert(Id3TagHandler):
                 return (False, None)
             else:
                 return (True, None)
-                
+
     def convert(self):
         ''' Convert wav -> ogg.'''
         if self.songwav == self.song:
@@ -243,7 +245,7 @@ class Convert(Id3TagHandler):
         if not ok:
             error('Decoding of "%s" failed.' % self.song)
             return
-            
+
         if dec:
             enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality), '-'], stdin=dec.stdout)
             enc.communicate()
@@ -273,15 +275,104 @@ class Convert(Id3TagHandler):
                 return False
         else:
             warn('No tags found...')
-            
-        if self.conf.clean_up:
+
+        if self.conf.delete_input:
             os.remove(self.song)
         return True
+
+class ConvertTrack(Convert):
+    '''Wrapper around Convert for CD Tracks'''
+    def __init__(self, device, conf, track, tags):
+        self.device, self.track, self.tags, self.conf = device, track, tags, conf
+        self.song    = ''
+        self.songwav = "audio.wav"
+        self.songogg = "%(artist)s - %(ntracknumber)s - %(title)s.ogg" % tags
+        self.conf.preserve_wav = False
+        self.convert()
+
+    def decode(self):
+        cmd               = {}
+        cmd['cdparanoia'] = ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), '-']
+        cmd['icedax']     = ['icedax', '-H', '-t', str(self.track), '-D',self.device]
+        cmd['cdda2wav']   = ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device]
+        if self.conf.cd_decoder != 'cdparanoia':
+            retcode = call(cmd[self.conf.cd_decoder])
+            if retcode != 0:
+                return (False, None)
+            else:
+                return (True, None)
+        else:
+            return True, Popen(cmd[self.conf.cd_decoder], stdout=PIPE)
+
+class ConvertDisc:
+    '''Wrapper around ConvertTrack to Convert complete cds
+    Currently uses MusicBrainz, but a CDDB fallback will be added, too.'''
+    def __init__(self, dev, conf):
+        self.dev, self.conf = dev, conf
+        self.MusicBrainz()
+
+    def MusicBrainz(self):
+        try:
+            import musicbrainz2.disc as mbdisc
+            import musicbrainz2.webservice as mbws
+        except ImportError:
+            fatal('You need python-musicbrainz2 to convert cds. Please install it.')
+
+        service = mbws.WebService()
+        query = mbws.Query(service)
+
+        # Read the disc in the drive
+        try:
+            disc = mbdisc.readDisc(self.dev)
+        except mbdisc.DiscError, e:
+            print "Error:", e
+            sys.exit(1)
+
+        discId = disc.getId()
+        try:
+            myfilter = mbws.ReleaseFilter(discId=discId)
+            results = query.getReleases(myfilter)
+        except mbws.WebServiceError, e:
+            print "Error:", e
+            sys.exit(2)
+
+        if len(results) == 0:
+            print "Disc is not yet in the MusicBrainz database."
+            print "Consider adding it via", mbdisc.getSubmissionUrl(disc)
+            sys.exit(0)
+
+        try:
+            inc = mbws.ReleaseIncludes(artist=True, tracks=True, releaseEvents=True)
+            release = query.getReleaseById(results[0].release.getId(), inc)
+        except mbws.WebServiceError, e:
+            print "Error:", e
+            sys.exit(2)
+
+        isSingleArtist = release.isSingleArtistRelease()
+
+        i = 1
+        for t in release.tracks:
+            title           = {}
+            title['artist'] = isSingleArtist and release.artist.name or t.artist
+            title['album']  = release.title
+            title['date']   = release.getEarliestReleaseDate()
+            title['musicbrainz_albumartistid'] = release.artist.id.split("/")[-1]
+            title['musicbrainz_albumid'] = release.id.split("/")[-1]
+            title['musicbrainz_discid'] = discId
+            title['musicbrainz_sortname'] = release.artist.sortName
+            title['musicbrainz_trackid'] = t.id.split("/")[-1]
+            title['title']  = t.title
+            title['tracktotal'] = str(len(release.tracks))
+            title['ntracknumber'] = '0' * ( len(title['tracktotal']) - len(str(i)) ) + str(i)
+            title['tracknumber'] = str(i)
+
+            ConvertTrack(self.dev, self.conf, i, title)
+            i+=1
 
 class ConvertDirectory:
     '''
     This class is just a wrapper for Convert.
-
+    
     Grab the songs to convert, then feed them one
     by one to the Convert class.
     '''
@@ -378,11 +469,15 @@ def main():
         for d in conf.args:
             ConvertDirectory(conf, d)
 
+    elif conf.cdda:
+        discs = len(conf.args) and conf.args or ("/dev/cdrom",)
+        for disc in discs:
+            ConvertDisc(disc, conf)
     else:
         for s in conf.args:
             if os.path.exists(s) == 0:
                 error('File: "%s" not found' % s)
-                sys.exit(1)                
+                sys.exit(1)
         for s in conf.args:
             Convert(s, conf)
 
