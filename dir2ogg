@@ -147,16 +147,6 @@ class Id3TagHandler:
             from mutagen.m4a import M4A as MP4
         self.grabCommon(MP4, convert)
 
-    def grabM4ATags(self):
-        '''Import MP4 tags handler, set convert and call commonGrab'''
-        convert = {'\xa9alb': 'album', '\xa9art': 'artist', '\xa9day': 'date', '\xa9nam': 'title', 'trkn': 'tracknumber',
-                        '\xa9gen': 'genre', '\xa9cmt': 'comment'}
-        try:
-            from mutagen.mp4 import MP4
-        except ImportError:
-            from mutagen.m4a import M4A as MP4
-        self.grabCommon(MP4, convert)
-
     def grabWMATags(self):
         '''Import ASF tags handler, set convert and call commonGrab'''
         convert = {'Author': 'artist',  'AlbumTitle': 'album', 'Year': 'date'}
@@ -191,6 +181,8 @@ class Convert(Id3TagHandler):
     '''
 
     def __init__(self, song, conf):
+        self.device  = ""
+        self.track   = ""
         self.song    = song
         self.conf    = conf
         songRoot     = os.path.splitext(song)[0] + "."
@@ -225,6 +217,10 @@ class Convert(Id3TagHandler):
         decoder['ogg123']  = ['ogg123', '-dwav', '-f' , outfile, self.song]
         decoder['flac']    = ['flac', '-o', outfile, '-d', self.song]
         decoder['mplayer'] = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, self.song]
+        # CD Ripper
+        decoder['cd-cdparanoia'] = ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), '-']
+        decoder['cd-icedax']     = ['icedax', '-H', '-t', str(self.track), '-D',self.device]
+        decoder['cd-cdda2wav']   = ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device]
 
         if use_pipe:
             return True, Popen(decoder[self.decoder], stdout=PIPE)
@@ -288,21 +284,8 @@ class ConvertTrack(Convert):
         self.songwav = "audio.wav"
         self.songogg = "%(artist)s/%(album)s/%(ntracknumber)s - %(title)s.ogg" % tags
         self.conf.preserve_wav = False
+        self.decoder           = 'cd-' + self.conf.cd_decoder
         self.convert()
-
-    def decode(self):
-        cmd               = {}
-        cmd['cdparanoia'] = ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), '-']
-        cmd['icedax']     = ['icedax', '-H', '-t', str(self.track), '-D',self.device]
-        cmd['cdda2wav']   = ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device]
-        if self.conf.cd_decoder != 'cdparanoia':
-            retcode = call(cmd[self.conf.cd_decoder])
-            if retcode != 0:
-                return (False, None)
-            else:
-                return (True, None)
-        else:
-            return True, Popen(cmd[self.conf.cd_decoder], stdout=PIPE)
 
 class ConvertDisc:
     '''Wrapper around ConvertTrack to Convert complete cds
@@ -314,7 +297,8 @@ class ConvertDisc:
         except self.MBError:
             warn('MusicBrainz failed. Trying FreeDB...')
             self.CDDB()
-    class MBError:
+
+    class MBError(Exception):
         '''Empty'''
 
     def CDDB(self):
@@ -322,10 +306,8 @@ class ConvertDisc:
             import CDDB, DiscID
         except ImportError:
             fatal('You need python-cddb (http://cddb-py.sf.net) to convert cds. Please install it.')
-            
-        cdrom = DiscID.open(self.dev)
-        disc_id = DiscID.disc_id(cdrom)
-        print  '%08lx' % long(DiscID.disc_id(DiscID.open(self.dev))[0])
+
+        disc_id = DiscID.disc_id(DiscID.open(self.dev))
         (query_status, query_info) = CDDB.query(disc_id)
         if type(query_info) == list:
             query_info = query_info[0]
@@ -338,7 +320,7 @@ class ConvertDisc:
             title['genre']  = read_info['DGENRE']
             title['date']   = read_info['DYEAR']
             title['title']  = read_info['TTITLE' + str(i)]          
-            title['tracktotal'] = str(len(range(disc_id[1])))
+            title['tracktotal'] = str(len(range(disc_id[1])) + 1)
             title['ntracknumber'] = '0' * (len(title['tracktotal'] ) - len(str(i+1)) ) + str(i+1)
             title['tracknumber'] = str(i+1)
             for k, v in title.items():
@@ -361,7 +343,7 @@ class ConvertDisc:
             disc = mbdisc.readDisc(self.dev)
         except mbdisc.DiscError, e:
             print "Error:", e
-            sys.exit(1)
+            raise self.MBError
 
         discId = disc.getId()
         try:
@@ -390,11 +372,9 @@ class ConvertDisc:
             cddb_id = '%08lx' % long(DiscID.disc_id(DiscID.open(self.dev))[0])
         except:
             cddb_id = False
-            pass
 
         i = 1
         for t in release.tracks:
-
             title           = {}
             title['artist'] = isSingleArtist and release.artist.name or t.artist
             if cddb_id:
@@ -410,7 +390,6 @@ class ConvertDisc:
             title['tracktotal'] = str(len(release.tracks))
             title['ntracknumber'] = '0' * ( len(title['tracktotal']) - len(str(i)) ) + str(i)
             title['tracknumber'] = str(i)
-
             ConvertTrack(self.dev, self.conf, i, title)
             i+=1
 
@@ -445,31 +424,12 @@ class ConvertDirectory:
     def printIfVerbose(self, conf):
         ''' Echo files to be converted if verbose flag is set.'''
         info('In %s I am going to convert:' % self.d)
-        if conf.convert_mp3:
-            for mp3 in self.mp3s:
-                info(mp3)
-            if len(self.mp3s) == 0:
-                warn('No mp3s in %s' % self.d)
-        if conf.convert_flac:
-            for flac in self.flacs:
-                info(flac)
-            if len(self.flacs) == 0:
-                warn('No flacs in %s' % self.d)
-        if conf.convert_m4a:
-            for m4a in self.m4as:
-                info(m4a)
-            if len(self.m4as) == 0:
-                warn('No m4as in %s' % self.d)
-        if conf.convert_wma:
-            for wma in self.wmas:
-                info(wma)
-            if len(self.wmas) == 0:
-                warn('No wmas in %s' % self.d)
-        if conf.convert_wav:
-            for wav in self.wavs:
-                info(wav)
-            if len(self.wavs) == 0:
-                warn('No wavs in %s' % self.d)
+        for i in ('mp3', 'flac', 'm4a', 'wma', 'wav'):
+            if conf.__dict__['convert_' + i]:
+                for mp3 in self.__dict__[i + 's']:
+                    info(mp3)
+                if len(self.__dict__[i + 's']) == 0:
+                    warn('No %ss in %s' % (i, self.d))
         print
 
 
