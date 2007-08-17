@@ -33,8 +33,6 @@ Scratch tags using the filename will be written for wav files (and mp3s with no 
 
 import sys
 import os, os.path
-import string
-import re
 from fnmatch import filter, fnmatch
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
@@ -454,12 +452,11 @@ def main():
     conf = MyConfig()
     if conf.recursive:
         rdirs = {}
-        for d in conf.args:
-            if os.path.exists(d) == 0:
-                error('Directory: "%s" not found' % d)
+        for directory in conf.args:
+            if os.path.exists(directory) == 0:
+                error('Directory: "%s" not found' % directory)
                 sys.exit(1)
-            l = returnDirs(d)
-            rdirs.update(l)
+            rdirs.update(returnDirs(d))
         if len(rdirs) == 0:
             error('No files to convert!')
             sys.exit(1)
@@ -467,24 +464,24 @@ def main():
             ConvertDirectory(conf, directory, files)
 
     elif conf.directory:
-        for d in conf.args:
-            if os.path.exists(d) == 0:
-                error('Directory: "%s" not found' % s)
+        for directory in conf.args:
+            if os.path.exists(directory) == 0:
+                error('Directory: "%s" not found' % directory)
                 sys.exit(1)
-        for d in conf.args:
-            ConvertDirectory(conf, d)
+        for directory in conf.args:
+            ConvertDirectory(conf, directory)
 
     elif conf.cdda:
         discs = len(conf.args) and conf.args or ("/dev/cdrom",)
         for disc in discs:
             ConvertDisc(disc, conf)
     else:
-        for s in conf.args:
-            if os.path.exists(s) == 0:
-                error('File: "%s" not found' % s)
+        for filename in conf.args:
+            if os.path.exists(filename) == 0:
+                error('File: "%s" not found' % filename)
                 sys.exit(1)
-        for s in conf.args:
-            Convert(s, conf)
+        for filename in conf.args:
+            Convert(filename, conf)
 
     sys.exit(0)
 
