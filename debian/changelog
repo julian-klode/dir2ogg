@@ -1,3 +1,14 @@
+dir2ogg (0.11~alpha3-1) experimental; urgency=low
+
+  * New development release
+    - CD Ripper with support for MusicBrainz and CDDB
+    - Fix FLAC and MP3 decoders support
+  * Packaging
+    - Recommend python-musicbrainz2, python-cddb and cdparanoia
+    - Improved long description
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Fri, 17 Aug 2007 16:57:06 +0200
+
 dir2ogg (0.11~alpha2-1) experimental; urgency=low
 
   * New development release with new features:

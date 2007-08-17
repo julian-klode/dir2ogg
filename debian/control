@@ -8,11 +8,13 @@ Build-Depends: debhelper (>= 5)
 Package: dir2ogg
 Architecture: all
 Depends: python (>= 2.4), python-mutagen, vorbis-tools, mpg123 | mpg321
-Recommends: faad, mplayer
+Recommends: faad, mplayer, python-musicbrainz2, python-cddb, cdparanoia
 Description: audio file converter into ogg-vorbis format
- dir2ogg converts MP3, M4A, WMA and WAV files to the open-source OGG format.
- It is a python script that simply binds together mpg123, faad, and oggenc
- making it easier for the user to convert his/her music files. It also supports
- id3 tags.
+ dir2ogg converts MP3, M4A, WMA, FLAC, WAV files and Audio CDs to the
+ open-source OGG format.
+ .
+ It is a python script that simply binds together the various decoders and
+ oggenc making it easier for the user to convert his/her music files. It also
+ supports ID3 tags.
  .
   Homepage: http://jak-linux.org/projects/dir2ogg/
