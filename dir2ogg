@@ -38,7 +38,7 @@ from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
 __version__ = '0.11alpha3'
-__date__    = '2007-08-12'
+__date__    = '2007-08-17'
 
 class MyConfig:
     def __init__(self):
