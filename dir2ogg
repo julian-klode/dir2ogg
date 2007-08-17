@@ -202,7 +202,7 @@ class Convert(Id3TagHandler):
         self.convert()
 
     def decode(self):
-        if self.decoder != 'mplayer' and not self.conf.no_pipe and not self.conf.preserve_wav:
+        if self.decoder not in ('mplayer', 'cd-icedax', 'cd-cdda2wav') and not self.conf.no_pipe and not self.conf.preserve_wav:
             outfile, outfile1 = '-', '/dev/stdout'
             use_pipe = 1
         else:
@@ -216,13 +216,14 @@ class Convert(Id3TagHandler):
         decoder['flac']    = ['flac', '-o', outfile, '-d', self.song]
         decoder['mplayer'] = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, self.song]
         # CD Ripper
-        decoder['cd-cdparanoia'] = ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), '-']
+        decoder['cd-cdparanoia'] = ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), outfile]
         decoder['cd-icedax']     = ['icedax', '-H', '-t', str(self.track), '-D',self.device]
         decoder['cd-cdda2wav']   = ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device]
 
         if use_pipe:
             return True, Popen(decoder[self.decoder], stdout=PIPE)
         else:
+            decoder['cd-cdparanoia'].remove('-q')
             retcode = call(decoder[self.decoder])
             if retcode != 0:
                 return (False, None)
