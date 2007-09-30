@@ -37,16 +37,15 @@ from fnmatch import filter, fnmatch
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11alpha3'
-__date__    = '2007-08-17'
+__version__ = '0.11 Beta 1'
+__date__    = '2007-09-30'
 
 class MyConfig:
     def __init__(self):
-        showBanner()
-        if 'alpha' in __version__ or 'beta' in __version__:
-            warn('This is a pre-release, the behaviour may change in future pre-releases')
-        if '-f' in sys.argv:
-            warn('-f is deprecated and its behavior will change in 0.12. Please use -W in future')
+        if not '--version' in sys.argv:
+            showBanner()
+        if  '-f' in sys.argv:
+            fatal('-f is deprecated and its behavior will change in 0.12. Please use -W in future')
         if len(sys.argv[1:]) == 0:
             fatal('No arguments specified, see --help for usage.')
         parser = OptionParser(usage='%prog [options] [arguments]', version='%prog ' + __version__)
@@ -59,11 +58,27 @@ class MyConfig:
         parser.add_option('--convert-flac',action='store_true', help="convert flac files (use with '-d')")
         parser.add_option('-m', '--convert-m4a', action='store_true', help="convert m4a files (use with '-d')")
         parser.add_option('-w', '--convert-wav', action='store_true', help="convert wav files (use with '-d')")
-        parser.add_option('-f', '-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
+        parser.add_option('-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
         parser.add_option('--delete-input', action='store_true', help='delete input files')
         parser.add_option('-p', '--preserve-wav',action='store_true', help='keep the wav files (also includes -P)')
         parser.add_option('-P', '--no-pipe',action='store_true', help='Do not use pipes, use temporary wav files')
         parser.add_option('-v', '--verbose',action='store_true', help='verbose output')
+        # Setup decoders
+        commands = {'mp3': ('lame', 'mpg123', 'mpg321', 'mplayer'),
+            'wma': ('mplayer',),
+            'm4a': ('faad', 'mplayer'),
+            'flac': ('flac', 'ogg123', 'mplayer'),
+            'cd':  ('cdparanoia', 'icedax','cdda2wav', 'mplayer'),
+            }
+        for ext, dec in commands.items():
+            default, choices = None, []
+            for command in dec:
+                a = [prefix for prefix in os.environ['PATH'].split(os.pathsep) if os.path.exists(os.path.join(prefix, command))]
+                if a:
+                    choices.append(command)
+                    default = default or command
+            parser.add_option('--' + ext + '-decoder', type="choice", metavar=default, default=default, choices=choices, help="decoder for %s files (choices: %s)" % (ext, ', '.join(choices)))
+        # End of decoder options
         options, self.args = parser.parse_args()
         if filter(self.args, '*.[mM][pP]3') :
             options.convert_mp3 = True
@@ -75,28 +90,16 @@ class MyConfig:
             options.convert_flac = True
         self.__dict__.update(options.__dict__)
         self.convert_cd = self.cdda
-        self.checkDecoder()
-        if len(self.args) == 0 and not self.cdda:
-            fatal('No files/directories specified.')
 
-    def checkDecoder(self):
-        '''Set the decoder'''
-        commands = {'mp3': ('mpg123', 'mpg321', 'mplayer'),
-                    'wma': ('mplayer',),
-                    'm4a': ('faad', 'mplayer'),
-                    'flac': ('flac', 'ogg123', 'mplayer'),
-                    'cd':  ('cdparanoia', 'icedax','cdda2wav')
-                   }
-        for ext, dec in commands.items():
-            self.__dict__[ext + '_decoder'] = None
-            for command in dec:
-                a = [prefix for prefix in os.environ['PATH'].split(os.pathsep) if os.path.exists(os.path.join(prefix, command))]
-                if a:
-                    self.__dict__[ext + '_decoder'] = command
-                    break
+        # Check for missing decoders
         for ext in commands:
             if self.__dict__["convert_" + ext] and not self.__dict__[ext + '_decoder']:
                 fatal('%s was enabled, but no decoder has been found.' % ext)
+
+        if len(self.args) == 0 and not self.cdda:
+            fatal('No files/directories specified.')
+
+
 
 def info(msg):
     print 'I: %s' % msg
@@ -122,7 +125,16 @@ def returnDirs(root):
 
 class Id3TagHandler:
     '''Class for handling meta-tags. (Needs mutagen)'''
-    accept = ['artist', 'title', 'album', 'date', 'comment', 'genre', 'tracknumber', 'tracktotal', 'discid', 'musicbrainz_discid', 'musicbrainz_sortname']
+    accept = ['album', 'album_subtitle', 'albumartist', 'albumartistsort', 
+              'albumsort', 'artist', 'artistsort', 'asin', 'bpm', 'comment',
+              'compilation', 'composer', 'composersort', 'conductor', 'copyright',
+              'date', 'discid', 'discnumber', 'encodedby', 'engineer', 'gapless',
+              'genre', 'grouping', 'isrc', 'label', 'lyricist', 'lyrics', 'mood',
+              'musicbrainz_albumartistid', 'musicbrainz_albumid', 'musicbrainz_artistid',
+              'musicbrainz_discid', 'musicbrainz_sortname', 'musicbrainz_trackid',
+              'musicbrainz_trmid', 'musicip_puid', 'podcast', 'podcasturl',
+              'releasecountry', 'musicbrainz_albumstatus', 'musicbrainz_albumtype', 'remixer', 'show',
+              'showsort', 'subtitle', 'title', 'titlesort', 'tracknumber', 'tracktotal']
     tags   = {}
     def grabCommon(self, handler, convert={}):
         '''Common grabber, starts the handler and applies the tags to self.tags'''
@@ -137,8 +149,25 @@ class Id3TagHandler:
 
     def grabM4ATags(self):
         '''Import MP4 tags handler, set convert and call commonGrab'''
-        convert = {'\xa9alb': 'album', '\xa9art': 'artist', '\xa9day': 'date', '\xa9nam': 'title', 'trkn': 'tracknumber',
-                        '\xa9gen': 'genre', '\xa9cmt': 'comment'}
+        convert = {'----:com.apple.iTunes:ASIN': 'asin',
+                   '----:com.apple.iTunes:MusicBrainz Album Artist Id': 'musicbrainz_albumartistid',
+                   '----:com.apple.iTunes:MusicBrainz Album Id': 'musicbrainz_albumid',
+                   '----:com.apple.iTunes:MusicBrainz Album Release Country': 'releasecountry',
+                   '----:com.apple.iTunes:MusicBrainz Album Status': 'musicbrainz_albumstatus',
+                   '----:com.apple.iTunes:MusicBrainz Album Type': 'musicbrainz_albumtype',
+                   '----:com.apple.iTunes:MusicBrainz Artist Id': 'musicbrainz_artistid',
+                   '----:com.apple.iTunes:MusicBrainz Disc Id': 'musicbrainz_discid',
+                   '----:com.apple.iTunes:MusicBrainz TRM Id': 'musicbrainz_trmid',
+                   '----:com.apple.iTunes:MusicBrainz Track Id': 'musicbrainz_trackid',
+                   '----:com.apple.iTunes:MusicIP PUID': 'musicip_puid',
+                   'aART': 'albumartist', 'cpil': 'compilation', 'cprt': 'copyright',
+                   'pcst': 'podcast', 'pgap': 'gapless', 'purl': 'podcasturl',
+                   'soaa': 'albumartistsort', 'soal': 'albumsort', 'soar': 'artistsort',
+                   'soco': 'composersort', 'sonm': 'titlesort', 'sosn': 'showsort',
+                   'trkn': 'tracknumber', 'tvsh': 'show', '\xa9ART': 'artist',
+                   '\xa9alb': 'album', '\xa9cmt': 'comment', '\xa9day': 'date',
+                   '\xa9gen': 'genre', '\xa9grp': 'grouping', '\xa9lyr': 'lyrics',
+                   '\xa9nam': 'title', '\xa9too': 'encodedby','\xa9wrt': 'composer'}
         try:
             from mutagen.mp4 import MP4
         except ImportError:
@@ -147,7 +176,43 @@ class Id3TagHandler:
 
     def grabWMATags(self):
         '''Import ASF tags handler, set convert and call commonGrab'''
-        convert = {'Author': 'artist',  'AlbumTitle': 'album', 'Year': 'date'}
+        convert = {'Author': 'artist', 'Description': 'comment',
+                   'MusicBrainz/Album Artist Id': 'musicbrainz_albumartistid',
+                   'MusicBrainz/Album Id': 'musicbrainz_albumid',
+                   'MusicBrainz/Album Release Country': 'releasecountry',
+                   'MusicBrainz/Album Status': 'musicbrainz_albumstatus',
+                   'MusicBrainz/Album Type': 'musicbrainz_albumtype',
+                   'MusicBrainz/Artist Id': 'musicbrainz_artistid',
+                   'MusicBrainz/Disc Id': 'musicbrainz_discid',
+                   'MusicBrainz/TRM Id': 'musicbrainz_trmid',
+                   'MusicBrainz/Track Id': 'musicbrainz_trackid',
+                   'MusicIP/PUID': 'musicip_puid',
+                   'WM/AlbumArtist': 'albumartist',
+                   'WM/AlbumArtistSortOrder': 'albumartistsort',
+                   'WM/AlbumSortOrder': 'albumsort',
+                   'WM/AlbumTitle': 'album',
+                   'WM/ArtistSortOrder': 'artistsort',
+                   'WM/BeatsPerMinute': 'bpm',
+                   'WM/Composer': 'composer',
+                   'WM/Conductor': 'conductor',
+                   'WM/ContentGroupDescription': 'grouping',
+                   'WM/Copyright': 'copyright',
+                   'WM/EncodedBy': 'encodedby',
+                   'WM/Genre': 'genre',
+                   'WM/ISRC': 'isrc',
+                   'WM/Lyrics': 'lyrics',
+                   'WM/ModifiedBy': 'remixer',
+                   'WM/Mood': 'mood',
+                   'WM/PartOfSet': 'discnumber',
+                   'WM/Producer': 'engineer',
+                   'WM/Publisher': 'label',
+                   'WM/SetSubTitle': 'album_subtitle',
+                   'WM/SubTitle': 'subtitle',
+                   'WM/TitleSortOrder': 'titlesort',
+                   'WM/TrackNumber': 'tracknumber',
+                   'WM/Writer': 'lyricist',
+                   'WM/Year': 'date',
+                  }
         from mutagen.asf import ASF
         self.grabCommon(ASF, convert)
 
@@ -202,7 +267,7 @@ class Convert(Id3TagHandler):
         self.convert()
 
     def decode(self):
-        if self.decoder not in ('mplayer', 'cd-icedax', 'cd-cdda2wav') and not self.conf.no_pipe and not self.conf.preserve_wav:
+        if self.decoder not in ('mplayer', 'cd-mplayer', 'cd-icedax', 'cd-cdda2wav') and not self.conf.no_pipe and not self.conf.preserve_wav:
             outfile, outfile1 = '-', '/dev/stdout'
             use_pipe = 1
         else:
@@ -214,16 +279,18 @@ class Convert(Id3TagHandler):
         decoder['faad']    = ['faad',  '-o' , outfile1, self.song]
         decoder['ogg123']  = ['ogg123', '-dwav', '-f' , outfile, self.song]
         decoder['flac']    = ['flac', '-o', outfile, '-d', self.song]
+        decoder['lame']    = ['lame', '--quiet', '--decode', self.song, outfile]
         decoder['mplayer'] = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, self.song]
         # CD Ripper
         decoder['cd-cdparanoia'] = ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), outfile]
         decoder['cd-icedax']     = ['icedax', '-H', '-t', str(self.track), '-D',self.device]
         decoder['cd-cdda2wav']   = ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device]
-
+        decoder['cd-mplayer']    = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, '-cdrom-device', self.device, "cdda://" + str(self.track)]
         if use_pipe:
             return True, Popen(decoder[self.decoder], stdout=PIPE)
         else:
             decoder['cd-cdparanoia'].remove('-q')
+            decoder['lame'].remove('--quiet')
             retcode = call(decoder[self.decoder])
             if retcode != 0:
                 return (False, None)
@@ -438,6 +505,7 @@ def showBanner():
 
 def showLicense(*args, **kwargs):
     print 'dir2ogg %s; released %s ' % (__version__, __date__)
+    print
     print 'Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>'
     print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>'
     print
