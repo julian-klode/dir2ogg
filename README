@@ -1,4 +1,4 @@
-dir2ogg: version 0.11 Beta 1
+dir2ogg: version 0.11 RC 1
 
 Manifest:
  README     - You're reading it now.
@@ -20,10 +20,11 @@ Installation:
 
 Requirements:
  - Tag preservation: mutagen (http://www.sacredchao.net/quodlibet/wiki/Development/Mutagen)
- - M4A Conversion: faad or mplayer
- - WMA Conversion: Mplayer
- - MP3 Conversion: mpg123, mpg321 or mplayer
+ - M4A Conversion: faad or mplayer (ALAC: alac-decoder)
+ - WMA Conversion: mplayer
+ - MP3 Conversion: mpg123, mpg321, lame or mplayer
  - FLAC Conversion: no extra software required (ogg123 from vorbis-tools)
+ - CD Ripping: cdparanoia, icedax or mplayer
  
 Usage:
  Read the manpage for detailed instructions: "man dir2ogg", or type "dir2ogg
@@ -35,16 +36,8 @@ Usage:
  as arguments, not filenames and directories
 
  If you wish to convert m4a, wma and/or wav files using -d then the -m, -f and -w
- flags must be used respectively. Wav files are deleted by default, use -p to keep
- wav files after conversion.
-
- The special characters '"', '*', '!', and ';' will be removed from filenames.
- The special character '&' will be converted to 'and'. These characters are known
- to break the script when fed to bash. If you don't like the idea of this script
- changing your filenames that is fair enough, but I submit these characters have
- no business being in proper unix filenames anyway. If you want to write a patch
- that will escape them rather than change the filename I'll be happy to include it,
- I am just lazy and can't be bothered to do this myself :)
+ flags must be used respectively (FLAC: --convert-flac). Wav files are deleted 
+ by default, use -p to keep wav files after conversion.
 
 Bugs:
  See the manpage. Please report bugs at https://bugs.launchpad.net/dir2ogg
@@ -76,4 +69,4 @@ Authors:
   Cameron Stone <camerons@cse.unsw.edu.au>
 
 Date:
- August 03, 2007
+ November 04, 2007

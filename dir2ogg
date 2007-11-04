@@ -33,86 +33,107 @@ Scratch tags using the filename will be written for wav files (and mp3s with no 
 
 import sys
 import os, os.path
-from fnmatch import filter, fnmatch
+import re
+from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11 Beta 2'
+__version__ = '0.11 RC 1'
 __date__    = '2007-11-04'
 
-filters = {'mp3': ('*.mp3',),
+FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
            'wma': ('*.asf', '*.wma', '*.wmf'),
            'flac': ('*.flac',),
-           'ogg': ('*.ogg',)
            }
 
-class MyConfig:
-    def __init__(self):
-        if not '--version' in sys.argv:
-            showBanner()
-        if  '-f' in sys.argv:
-            fatal('-f is deprecated and its behavior will change in 0.12. Please use -W in future')
-        if len(sys.argv[1:]) == 0:
-            fatal('No arguments specified, see --help for usage.')
-        parser = OptionParser(usage='%prog [options] [arguments]', version='%prog ' + __version__)
-        parser.add_option('-l', '--license',action='callback', callback=showLicense, help='display license informations')
-        parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments')
-        parser.add_option('-r', '--recursive', action='store_true', help='convert files in all subdirectories of all directories specified as arguments')
-        parser.add_option('-c', '--cdda', action='store_true', help="convert audio cd in all devices specified as arguments (or default: /dev/cdrom) [EXPERIMENTAL]")
-        parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
-        parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
-        parser.add_option('--convert-flac',action='store_true', help="convert flac files (use with '-d')")
-        parser.add_option('-m', '--convert-m4a', action='store_true', help="convert m4a files (use with '-d')")
-        parser.add_option('-w', '--convert-wav', action='store_true', help="convert wav files (use with '-d')")
-        parser.add_option('-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
-        parser.add_option('--delete-input', action='store_true', help='delete input files')
-        parser.add_option('-p', '--preserve-wav',action='store_true', help='keep the wav files (also includes -P)')
-        parser.add_option('-P', '--no-pipe',action='store_true', help='Do not use pipes, use temporary wav files')
-        parser.add_option('-v', '--verbose',action='store_true', help='verbose output')
-        # Setup decoders
-        commands = {'mp3': ('lame', 'mpg123', 'mpg321', 'mplayer'),
-            'wma': ('mplayer',),
-            'm4a': ('faad', 'mplayer'),
-            'flac': ('flac', 'ogg123', 'mplayer'),
-            'cd':  ('cdparanoia', 'icedax','cdda2wav', 'mplayer'),
-            }
-        for ext, dec in commands.items():
-            default, choices = None, []
-            for command in dec:
-                a = [prefix for prefix in os.environ['PATH'].split(os.pathsep) if os.path.exists(os.path.join(prefix, command))]
-                if a:
-                    choices.append(command)
-                    default = default or command
-            parser.add_option('--' + ext + '-decoder', type="choice", metavar=default, default=default, choices=choices, help="decoder for %s files (choices: %s)" % (ext, ', '.join(choices)))
+def mmatch(names, patterns, rbool=True):
+    '''names/patterns=str/list/tuple'''
+    results = []
+    if isinstance(names, (str, unicode)):
+        names = [names]
+    if isinstance(patterns, (str, unicode)):
+        patterns = [patterns]
+    for pat in patterns:
+        pat = pat.lower()
+        if not pat in _cache:
+            _cache[pat] = re.compile(translate(pat))
+        match = _cache[pat].match
+        for name in names:        
+            if match(name.lower()):
+                if rbool:
+                    return True
+                else:
+                    results.append(name)
+    if rbool:
+        return bool(results)
+    else: 
+        return results
 
-        # End of decoder options
-        options, self.args = parser.parse_args()
-        if filter(self.args, '*.[mM][pP]3') :
-            options.convert_mp3 = True
-        elif filter(self.args, '*.[mM]4[aA]'):
-            options.convert_m4a = True
-        elif filter(self.args, '*.[wW][mM][aA]'):
-            options.convert_wma = True
-        elif filter(self.args, '*.[fF][lL][aA][cC]'):
-            options.convert_flac = True
-        self.__dict__.update(options.__dict__)
-        self.convert_cd = self.cdda
+def read_opts():
+    if not '--version' in sys.argv:
+        show_banner()
+    if  '-f' in sys.argv:
+        fatal('-f is deprecated and its behavior will change in 0.12. Please use -W in future')
+    if len(sys.argv[1:]) == 0:
+        fatal('No arguments specified, see --help for usage.')
+    parser = OptionParser(usage='%prog [options] [arguments]', version='%prog ' + __version__)
+    parser.add_option('-l', '--license', action='callback', callback=show_license, help='display license informations')
+    parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments')
+    parser.add_option('-r', '--recursive', action='store_true', help='convert files in all subdirectories of all directories specified as arguments')
+    parser.add_option('-c', '--cdda', action='store_true', help="convert audio cd in all devices specified as arguments (or default: /dev/cdrom) [EXPERIMENTAL]")
+    parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
+    parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
+    parser.add_option('-a', '--convert-all', action='store_true', help="convert all supported formats")
+    parser.add_option('--convert-flac', action='store_true', help="convert flac files (use with '-d')")        
+    parser.add_option('-m', '--convert-m4a', action='store_true', help="convert m4a files (use with '-d')")
+    parser.add_option('-w', '--convert-wav', action='store_true', help="convert wav files (use with '-d')")
+    parser.add_option('-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
+    parser.add_option('--delete-input', action='store_true', help='delete input files')
+    parser.add_option('-p', '--preserve-wav', action='store_true', help='keep the wav files (also includes -P)')
+    parser.add_option('-P', '--no-pipe', action='store_true', help='Do not use pipes, use temporary wav files')
+    parser.add_option('-v', '--verbose', action='store_true', help='verbose output')
+    
+    # Setup decoders
+    commands = {'mp3': ('mpg123', 'mpg321', 'lame',  'mplayer'),
+        'wma': ('mplayer',),
+        'm4a': ('faad', 'mplayer'),
+        'flac': ('flac', 'ogg123', 'mplayer'),
+        'cd':  ('cdparanoia', 'icedax','cdda2wav', 'mplayer'),
+        }
 
-        # Check for missing decoders
-        for ext in commands:
-            if self.__dict__["convert_" + ext] and not self.__dict__[ext + '_decoder']:
-                fatal('%s was enabled, but no decoder has been found.' % ext)
+    for ext, dec in commands.items():
+        default, choices = None, []
+        for command in dec:
+            in_path = [prefix for prefix in os.environ['PATH'].split(os.pathsep) if os.path.exists(os.path.join(prefix, command))]
+            if in_path:
+                choices.append(command)
+                default = default or command
+        parser.add_option('--' + ext + '-decoder', type="choice", metavar=default, default=default, choices=choices, help="decoder for %s files (choices: %s)" % (ext, ', '.join(choices)))
 
-        if len(self.args) == 0 and not self.cdda:
-            fatal('No files/directories specified.')
+    # End of decoder options
+    options, args = parser.parse_args()
 
+    options.convert_cd = options.cdda
+    options.filters    = []
+    for ext, pat in FILTERS.items():
+        # Activate Encoders for files on the commandline
+        if options.convert_all or mmatch(args, pat):
+            setattr(options, 'convert_' + ext, True)
+        if getattr(options, 'convert_' + ext):
+            options.filters += pat
+        # Missing decoders
+        if getattr(options, 'convert_' + ext) and not getattr(options, ext + '_decoder'):
+            fatal('%s was enabled, but no decoder has been found.' % ext)
 
+    if len(args) == 0 and not options.cdda:
+        fatal('No files/directories specified.')
+    return options, args
 
 def info(msg):
     print 'Information: %s' % msg
 
-def warn(msg, i="W:", e=''):
+def warn(msg):
     '''print errors to the screen (red)'''
     print >> sys.stderr, "Warning: %s" % msg
 
@@ -121,7 +142,7 @@ def fatal(msg):
     print >> sys.stderr, "Error: %s" % msg
     sys.exit(1)
 
-def returnDirs(root):
+def return_dirs(root):
     mydirs = {}
     for pdir, dirs, files in os.walk(root):
         if not pdir in mydirs:
@@ -141,16 +162,22 @@ class Id3TagHandler:
               'releasecountry', 'musicbrainz_albumstatus', 'musicbrainz_albumtype', 'remixer', 'show',
               'showsort', 'subtitle', 'title', 'titlesort', 'tracknumber', 'tracktotal']
     tags   = {}
-    def grabCommon(self, handler, convert={}):
+    def __init__(self, song):
+        self.song = song
+        
+    def grab_common(self, handler, convert=None):
         '''Common grabber, starts the handler and applies the tags to self.tags'''
-        mydict = handler(self.song)
-        for k,v in mydict.items():
-            k = k.lower()
-            k = k in convert and convert[k] or k
-            if k in self.accept:
-                self.tags[k] = isinstance(v, (str, unicode)) and v or str(v)
+        mydict  = handler(self.song)
+        if convert:
+            convert = dict([(k.lower(), v.lower()) for k, v in convert.items()]) # Fix convert
+        for key, val in mydict.items():
+            key = key.lower()
+            key = convert and (key in convert and convert[key] or key) or key
+            if hasattr(val, 'text'): val=val.text
+            if key in self.accept:
+                self.tags[key] = isinstance(val, (int, bool)) and str(val) or val
 
-    def grabM4ATags(self):
+    def grab_m4a_tags(self):
         '''Import MP4 tags handler, set convert and call commonGrab'''
         convert = {'----:com.apple.iTunes:ASIN': 'asin',
                    '----:com.apple.iTunes:MusicBrainz Album Artist Id': 'musicbrainz_albumartistid',
@@ -175,9 +202,9 @@ class Id3TagHandler:
             from mutagen.mp4 import MP4
         except ImportError:
             from mutagen.m4a import M4A as MP4
-        self.grabCommon(MP4, convert)
+        self.grab_common(MP4, convert)
 
-    def grabWMATags(self):
+    def grab_wma_tags(self):
         '''Import ASF tags handler, set convert and call commonGrab'''
         convert = {'Author': 'artist', 'Description': 'comment',
                    'MusicBrainz/Album Artist Id': 'musicbrainz_albumartistid',
@@ -217,25 +244,32 @@ class Id3TagHandler:
                    'WM/Year': 'date',
                   }
         from mutagen.asf import ASF
-        self.grabCommon(ASF, convert)
+        self.grab_common(ASF, convert)
 
-    def grabFLACTags(self):
+    def grab_flac_tags(self):
         '''Import MP3 tags handler, and call commonGrab'''
         from mutagen.flac import FLAC
-        self.grabCommon(FLAC)
+        self.grab_common(FLAC)
 
-    def grabMP3Tags(self):
+    def grab_mp3_tags(self):
         '''Import MP3 tags handler, and call commonGrab'''
-        from mutagen.easyid3 import EasyID3
-        self.grabCommon(EasyID3)
+        from mutagen.id3 import ID3
+        convert = {'TPE1': 'artist', 'TPE2': 'albumartist', 'TPE3': 'conductor', 'TPE4': 'remixer',
+                   'TCOM': 'composer', 'TCON': 'genre', 'TALB': 'album', 'TIT1': 'grouping',
+                   'TIT2': 'title', 'TIT3': 'subtitle', 'TSST': 'discsubtitle', 'TEXT': 'lyricist',
+                   'TCMP': 'compilation', 'TDRC': 'date', 'COMM': 'comment', 'TMOO': 'mood',
+                   'TMED': 'media', 'TBPM': 'bpm', 'WOAR': 'website', 'TSRC': 'isrc', 
+                   'TENC': 'encodedby', 'TCOP': 'copyright', 'TSOA': 'albumsort', 
+                   'TSOP': 'artistsort', 'TSOT': 'titlesort','TPUB': 'label'}
+        self.grab_common(ID3, convert)
 
-    def listIfVerbose(self):
+    def list_if_verbose(self):
         info('Meta-tags I will write:')
-        for k,v in self.tags.items():
-            if type(v) == list:
-                info(k + ': ' + ','.join(v))
+        for key, val in self.tags.items():
+            if type(val) == list:
+                info(key + ': ' + ','.join(val))
             else:
-                info(k + ': ' + v)
+                info(key + ': ' + val)
 
 class Convert(Id3TagHandler):
     '''
@@ -249,24 +283,15 @@ class Convert(Id3TagHandler):
     def __init__(self, song, conf):
         self.device  = ""
         self.track   = ""
-        self.song    = song
+        Id3TagHandler.__init__(self, song)
         self.conf    = conf
-        songRoot     = os.path.splitext(song)[0] + "."
-        self.songwav = songRoot + 'wav'
-        self.songogg = songRoot + 'ogg'
-        self.BUFFER  = '#' * 78
-        if fnmatch(self.song, '*.[mM][pP]3') :
-            self.decoder = self.conf.mp3_decoder
-            self.grabMP3Tags()
-        elif fnmatch(self.song, '*.[mM]4[aA]'):
-            self.decoder = self.conf.m4a_decoder
-            self.grabM4ATags()
-        elif fnmatch(self.song, '*.[wW][mM][aA]'):
-            self.decoder = self.conf.wma_decoder
-            self.grabWMATags()
-        elif fnmatch(self.song, '*.[fF][lL][aA][cC]'):
-            self.decoder = self.conf.flac_decoder
-            self.grabFLACTags()
+        song_root    = os.path.splitext(song)[0] + "."
+        self.songwav = song_root + 'wav'
+        self.songogg = song_root + 'ogg'
+        for ext, pat in FILTERS.items():
+            if mmatch(self.song, pat):
+                self.decoder = getattr(self.conf, ext + '_decoder')
+                getattr(self, 'grab_%s_tags' % ext)()
         self.convert()
 
     def decode(self):
@@ -274,18 +299,18 @@ class Convert(Id3TagHandler):
             outfile, outfile1 = '-', '/dev/stdout'
             use_pipe = 1
         else:
-            if self.decoder in 'mplayer': self.songwav, self.conf.preserve_wav = 'temp.wav', False
+            if 'mplayer' in self.decoder : self.songwav, self.conf.preserve_wav = 'temp.wav', False
             outfile = outfile1 = self.songwav
             use_pipe = 0
-        decoder = {'mpg123':  ['mpg123', '-w', outfile, self.song],
+        decoder = {'mpg123':  ['mpg123', '-n', '1', '-w', outfile, self.song],
                    'mpg321':  ['mpg321', '-w', outfile, self.song],
                    'faad':    ['faad',  '-o' , outfile1, self.song],
                    'ogg123':  ['ogg123', '-dwav', '-f' , outfile, self.song],
                    'flac':    ['flac', '-o', outfile, '-d', self.song],
                    'lame':    ['lame', '--quiet', '--decode', self.song, outfile],
                    'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=temp.wav', self.song],
-                   'alac-decoder': ['alac-decoder', '-f' , outfile, self.song],
-                   'cd-cdparanoia': ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), outfile],
+                   'alac-decoder': ['alac-decoder',  self.song],
+                   'cd-cdparanoia': ['cdparanoia', '-Z', '-q',  '-w', '-d', self.device, str(self.track), outfile],
                    'cd-icedax':      ['icedax', '-H', '-t', str(self.track), '-D',self.device],
                    'cd-cdda2wav':    ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device],
                    'cd-mplayer':     ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=temp.wav', '-cdrom-device', self.device, "cdda://" + str(self.track)]}
@@ -303,12 +328,12 @@ class Convert(Id3TagHandler):
     def convert(self):
         ''' Convert wav -> ogg.'''
         if self.songwav == self.song:
-            ok = True
+            success = True
             dec = None
         else:
-            ok, dec = self.decode()
-        if not ok:
-            error('Decoding of "%s" failed.' % self.song)
+            success, dec = self.decode()
+        if not success:
+            warn('Decoding of "%s" failed.' % self.song)
             return
 
         if dec:
@@ -316,18 +341,19 @@ class Convert(Id3TagHandler):
             enc.communicate()
             dec.wait()
             if dec.returncode < 0:
-                error('Decoding of "%s" failed.' % self.song)
+                warn('Decoding of "%s" failed.' % self.song)
                 return False
             elif enc.returncode < 0:
-                error('Encoding of "%s" failed.' % self.song)
+                warn('Encoding of "%s" failed.' % self.song)
                 return False
         else:
             enc = call(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality), self.songwav])
             if enc != 0:
-                error('Encoding of "%s" failed.' % self.songwav)
+                warn('Encoding of "%s" failed.' % self.songwav)
                 return False
             elif not self.conf.preserve_wav and self.song != self.songwav:
                 os.remove(self.songwav)
+
         if self.tags != {}:
             try:
                 # Add tags to the ogg file
@@ -336,7 +362,9 @@ class Convert(Id3TagHandler):
                 myogg.update(self.tags)
                 myogg.save()
             except:
-                error('Could not save the tags')
+                warn('Could not save the tags')
+                import traceback
+                traceback.print_exc()
                 return False
         else:
             warn('No tags found...')
@@ -362,47 +390,47 @@ class ConvertDisc:
     def __init__(self, dev, conf):
         self.dev, self.conf = dev, conf
         try:
-            self.MusicBrainz()
+            self.get_mb()
         except self.MBError:
             warn('MusicBrainz failed. Trying FreeDB...')
-            self.CDDB()
+            self.get_cddb()
 
     class MBError(Exception):
         '''Empty'''
 
-    def CDDB(self):
+    def get_cddb(self):
         try:
             import CDDB, DiscID
         except ImportError:
             fatal('You need python-cddb (http://cddb-py.sf.net) to convert cds. Please install it.')
 
-        disc_id = DiscID.disc_id(DiscID.open(self.dev))
-        (query_status, query_info) = CDDB.query(disc_id)
+        disc_id    = DiscID.disc_id(DiscID.open(self.dev))
+        query_info = CDDB.query(disc_id)[1]
         if type(query_info) == list:
             query_info = query_info[0]
-        (read_status, read_info) = CDDB.read(query_info['category'], query_info['disc_id'])
+        read_info = CDDB.read(query_info['category'], query_info['disc_id'])[1]
 
-        for i in range(disc_id[1]):
+        for track in range(disc_id[1]):
             title           = {}
             title['discid'] = query_info['disc_id']
-            title['artist'],title['album'] = (i.strip() for i in query_info['title'].split("/"))
+            title['artist'], title['album'] = (track.strip() for track in query_info['title'].split("/"))
             title['genre']  = read_info['DGENRE']
             title['date']   = read_info['DYEAR']
-            title['title']  = read_info['TTITLE' + str(i)]          
+            title['title']  = read_info['TTITLE' + str(track)]          
             title['tracktotal'] = str(len(range(disc_id[1])) + 1)
-            title['ntracknumber'] = '0' * (len(title['tracktotal'] ) - len(str(i+1)) ) + str(i+1)
-            title['tracknumber'] = str(i+1)
-            for k, v in title.items():
-                title[k] =  unicode(str(v), "ISO-8859-1")
-            ConvertTrack(self.dev, self.conf, i+1, title)
+            title['ntracknumber'] = '0' * (len(title['tracktotal'] ) - len(str(track+1)) ) + str(track+1)
+            title['tracknumber'] = str(track+1)
+            for key, val in title.items():
+                title[key] =  unicode(str(val), "ISO-8859-1")
+            ConvertTrack(self.dev, self.conf, track+1, title)
             
-    def MusicBrainz(self):
+    def get_mb(self):
         try:
             import musicbrainz2.disc as mbdisc
             import musicbrainz2.webservice as mbws
-        except ImportError, e:
-            error('You need python-musicbrainz2 to convert cds. Please install it. Trying cddb.')
-            raise self.MBError, e
+        except ImportError, err:
+            warn('You need python-musicbrainz2 to convert cds. Please install it. Trying cddb.')
+            raise self.MBError, err
 
         service = mbws.WebService()
         query = mbws.Query(service)
@@ -410,16 +438,16 @@ class ConvertDisc:
         # Read the disc in the drive
         try:
             disc = mbdisc.readDisc(self.dev)
-        except mbdisc.DiscError, e:
-            print "Error:", e
+        except mbdisc.DiscError, err:
+            warn(err)
             raise self.MBError
 
         discId = disc.getId()
         try:
             myfilter = mbws.ReleaseFilter(discId=discId)
             results = query.getReleases(myfilter)
-        except mbws.WebServiceError, e:
-            print "Error:", e
+        except mbws.WebServiceError, err:
+            warn(err)
             raise self.MBError
 
         if len(results) == 0:
@@ -429,8 +457,8 @@ class ConvertDisc:
         try:
             inc = mbws.ReleaseIncludes(artist=True, tracks=True, releaseEvents=True)
             release = query.getReleaseById(results[0].release.getId(), inc)
-        except mbws.WebServiceError, e:
-            print "Error:", e
+        except mbws.WebServiceError, err:
+            warn(err)
             raise self.MBError
             
         isSingleArtist = release.isSingleArtistRelease()
@@ -442,10 +470,10 @@ class ConvertDisc:
         except:
             cddb_id = False
 
-        i = 1
-        for t in release.tracks:
+        trackn = 1
+        for track in release.tracks:
             title           = {}
-            title['artist'] = isSingleArtist and release.artist.name or t.artist
+            title['artist'] = isSingleArtist and release.artist.name or track.artist
             if cddb_id:
                 title['discid'] = cddb_id
             title['album']  = release.title
@@ -454,13 +482,13 @@ class ConvertDisc:
             title['musicbrainz_albumid'] = release.id.split("/")[-1]
             title['musicbrainz_discid'] = discId
             title['musicbrainz_sortname'] = release.artist.sortName
-            title['musicbrainz_trackid'] = t.id.split("/")[-1]
-            title['title']  = t.title
+            title['musicbrainz_trackid'] = track.id.split("/")[-1]
+            title['title']  = track.title
             title['tracktotal'] = str(len(release.tracks))
-            title['ntracknumber'] = '0' * ( len(title['tracktotal']) - len(str(i)) ) + str(i)
-            title['tracknumber'] = str(i)
-            ConvertTrack(self.dev, self.conf, i, title)
-            i+=1
+            title['ntracknumber'] = "%02d" % trackn
+            title['tracknumber'] = str(trackn)
+            ConvertTrack(self.dev, self.conf, trackn, title)
+            trackn+=1
 
 class ConvertDirectory:
     '''
@@ -470,91 +498,66 @@ class ConvertDirectory:
     by one to the Convert class.
     '''
 
-    def __init__(self, conf, d, files=None):
+    def __init__(self, conf, directory, files):
         ''' Decide which files will be converted.'''
-        if os.path.exists(d) == 0:
-            error('Directory: "%s" not found' % d)
-            sys.exit(1)
+        if os.path.exists(directory) == 0:
+            fatal('Directory: "%s" not found' % directory)
 
-        self.d = d = os.path.normpath(d) + os.path.sep
-        self.songs = files and files or os.listdir(d)
-        self.m4as  = conf.convert_m4a and filter(self.songs, '*.[mM]4[aA]') or []
-        self.mp3s  = conf.convert_mp3 and filter(self.songs, '*.[mM][pP]3') or []
-        self.wavs  = conf.convert_wav and filter(self.songs, '*.[wW][aA][vV]') or []
-        self.wmas  = conf.convert_wma and filter(self.songs, '*.[wW][mM][aA]') or []
-        self.flacs = conf.convert_flac and filter(self.songs, '*.[fF][lL][aA][cC]') or []
+        self.directory = directory = os.path.normpath(directory) + os.path.sep
+        self.songs = mmatch(files, conf.filters, False)
 
         if conf.verbose:
-            self.printIfVerbose(conf)
+            self.print_if_verbose()
 
-        for f in self.wmas +  self.mp3s + self.wavs + self.m4as + self.flacs:
-            Convert(d + f, conf)
+        for song in self.songs:
+            Convert(directory + song, conf)
 
-    def printIfVerbose(self, conf):
+    def print_if_verbose(self):
         ''' Echo files to be converted if verbose flag is set.'''
-        info('In %s I am going to convert:' % self.d)
-        for i in ('mp3', 'flac', 'm4a', 'wma', 'wav'):
-            if conf.__dict__['convert_' + i]:
-                for mp3 in self.__dict__[i + 's']:
-                    info(mp3)
-                if len(self.__dict__[i + 's']) == 0:
-                    warn('No %ss in %s' % (i, self.d))
-        print
+        info('In %s I am going to convert:' % self.directory)
+        for song in self.songs:
+            print " ", song
 
 
-def showBanner():
-    print 'dir2ogg %s, (C) Julian Andres Klode and Darren Kirby. Released under GPL' % __version__
-    print
+def show_banner():
+    print 'dir2ogg %s, (C) Julian Andres Klode and Darren Kirby. Released under GPL\n' % __version__
 
-def showLicense(*args, **kwargs):
-    print 'dir2ogg %s; released %s ' % (__version__, __date__)
-    print
+def show_license(*args, **kwargs):
+    print 'dir2ogg %s; released %s\n' % (__version__, __date__)
     print 'Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>'
-    print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>'
-    print
+    print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n'
     print 'This program is distributed in the hope that it will be useful,'
     print 'but WITHOUT ANY WARRANTY; without even the implied warranty of'
     print 'MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the'
-    print 'GNU General Public License for more details.'
-    print
+    print 'GNU General Public License for more details.\n'
     print 'Currently developed by Julian Andres Klode <jak@jak-linux.org>.'
     sys.exit(0)
 
 def main():
-    conf = MyConfig()
-    if conf.recursive:
-        rdirs = {}
-        for directory in conf.args:
-            if os.path.exists(directory) == 0:
-                error('Directory: "%s" not found' % directory)
-                sys.exit(1)
-            rdirs.update(returnDirs(d))
-        if len(rdirs) == 0:
-            error('No files to convert!')
-            sys.exit(1)
-        for directory,files in rdirs.items():
-            ConvertDirectory(conf, directory, files)
-
-    elif conf.directory:
-        for directory in conf.args:
-            if os.path.exists(directory) == 0:
-                error('Directory: "%s" not found' % directory)
-                sys.exit(1)
-        for directory in conf.args:
-            ConvertDirectory(conf, directory)
-
-    elif conf.cdda:
-        discs = len(conf.args) and conf.args or ("/dev/cdrom",)
+    conf = read_opts()
+    conf_args, conf = conf[1], conf[0]
+    if conf.cdda:
+        discs = len(conf_args) and conf_args or ("/dev/cdrom",)
         for disc in discs:
             ConvertDisc(disc, conf)
+    elif conf.directory or conf.recursive:
+        rdirs = {}
+        for path in conf_args:
+            if not os.path.isdir(path):
+                fatal('Path: %s does not exists' % path)
+            elif conf.recursive:
+                rdirs.update(return_dirs(path))
+            elif conf.directory:
+                rdirs.update({path: os.listdir(path)})
+        for directory, files in rdirs.items():
+            ConvertDirectory(conf, directory, files) 
     else:
-        for filename in conf.args:
-            if os.path.exists(filename) == 0:
-                error('File: "%s" not found' % filename)
-                sys.exit(1)
-        for filename in conf.args:
+        for path in conf_args:
+            if not os.path.isfile(path):
+                fatal('Path: %s does not exists' % path)
+        for filename in conf_args:
             Convert(filename, conf)
-
+            
     sys.exit(0)
 
 if __name__ == '__main__':

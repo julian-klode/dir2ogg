@@ -1,13 +1,24 @@
-dir2ogg (0.11~beta2) UNRELEASED; urgency=low
+dir2ogg (0.11~rc1) RELEASED; urgency=low
 
-  * No colorized output, use Error:, Warning: and Information:
-  * Add support for alac files (use --m4a-decoder=alac-decoder)
-  * Convert values which are not str or unicode to str.
-  * Fix Mplayer Support (write wav file to temp.wav)
-  * Internal:
-    - Define filename patterns globally
+  * New features:
+    - Heavily Improved MP3 Support (switched to mutagen.id3 from mutagen.easyid3)
+    - Support for ALAC Audio Files (use --m4a-decoder=alac-decoder)
+  * Bug fixes:
+    - MPlayer can now work with comma in filename (LP: #155471)
+    - Convert bool and int tags to string
+    - Convert all tag names to lowercase for filtering purposes
+  * Coding style / Cleanup
+    - Remove duplicated code (e.g.: globally define file extensions)
+    - Rename functions, classes, variables to match pylint
+    - Make MyConfig a function => read_opts
+  * Documentation:
+    - Update man page
+  * Other stuff:
+    - No colorized output anymore, easier to work with
+    - cdparanoia: disable all paranoia checks
+    - Print traceback if tag saving failed
 
- -- Julian Andres Klode <jak@jak-linux.org>  Wed, 03 Oct 2007 14:36:53 +0200
+ -- Julian Andres Klode <jak@jak-linux.org>  Sun, 04 Nov 2007 17:27:17 +0100
 
 dir2ogg (0.11~beta1) RELEASED; urgency=low
 
