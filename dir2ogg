@@ -37,8 +37,15 @@ from fnmatch import filter, fnmatch
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11 Beta 1'
-__date__    = '2007-09-30'
+__version__ = '0.11 Beta 2'
+__date__    = '2007-11-04'
+
+filters = {'mp3': ('*.mp3',),
+           'm4a': ('*.aac', '*.m4a', '*.mp4'),
+           'wma': ('*.asf', '*.wma', '*.wmf'),
+           'flac': ('*.flac',),
+           'ogg': ('*.ogg',)
+           }
 
 class MyConfig:
     def __init__(self):
@@ -78,6 +85,7 @@ class MyConfig:
                     choices.append(command)
                     default = default or command
             parser.add_option('--' + ext + '-decoder', type="choice", metavar=default, default=default, choices=choices, help="decoder for %s files (choices: %s)" % (ext, ', '.join(choices)))
+
         # End of decoder options
         options, self.args = parser.parse_args()
         if filter(self.args, '*.[mM][pP]3') :
@@ -102,19 +110,16 @@ class MyConfig:
 
 
 def info(msg):
-    print 'I: %s' % msg
+    print 'Information: %s' % msg
 
 def warn(msg, i="W:", e=''):
     '''print errors to the screen (red)'''
-    call(['echo', '-en', '\\033[1;31m'])
-    print >> sys.stderr, "%s %s %s" % (i, msg, e)
-    call(['echo', '-en', '\\033[0;39m'])
+    print >> sys.stderr, "Warning: %s" % msg
 
 def fatal(msg):
     '''Fatal error (error + exit)'''
-    warn(msg, 'E:', 'Exiting...')
+    print >> sys.stderr, "Error: %s" % msg
     sys.exit(1)
-error = warn
 
 def returnDirs(root):
     mydirs = {}
@@ -143,9 +148,7 @@ class Id3TagHandler:
             k = k.lower()
             k = k in convert and convert[k] or k
             if k in self.accept:
-                self.tags[k] = v
-            else:
-                print k
+                self.tags[k] = isinstance(v, (str, unicode)) and v or str(v)
 
     def grabM4ATags(self):
         '''Import MP4 tags handler, set convert and call commonGrab'''
@@ -267,25 +270,25 @@ class Convert(Id3TagHandler):
         self.convert()
 
     def decode(self):
-        if self.decoder not in ('mplayer', 'cd-mplayer', 'cd-icedax', 'cd-cdda2wav') and not self.conf.no_pipe and not self.conf.preserve_wav:
+        if self.decoder not in ('mplayer',) and not self.conf.no_pipe and not self.conf.preserve_wav:
             outfile, outfile1 = '-', '/dev/stdout'
             use_pipe = 1
         else:
+            if self.decoder in 'mplayer': self.songwav, self.conf.preserve_wav = 'temp.wav', False
             outfile = outfile1 = self.songwav
             use_pipe = 0
-        decoder            = {}
-        decoder['mpg123']  = ['mpg123', '-w', outfile, self.song]
-        decoder['mpg321']  = ['mpg321', '-w', outfile, self.song]
-        decoder['faad']    = ['faad',  '-o' , outfile1, self.song]
-        decoder['ogg123']  = ['ogg123', '-dwav', '-f' , outfile, self.song]
-        decoder['flac']    = ['flac', '-o', outfile, '-d', self.song]
-        decoder['lame']    = ['lame', '--quiet', '--decode', self.song, outfile]
-        decoder['mplayer'] = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, self.song]
-        # CD Ripper
-        decoder['cd-cdparanoia'] = ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), outfile]
-        decoder['cd-icedax']     = ['icedax', '-H', '-t', str(self.track), '-D',self.device]
-        decoder['cd-cdda2wav']   = ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device]
-        decoder['cd-mplayer']    = ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + outfile, '-cdrom-device', self.device, "cdda://" + str(self.track)]
+        decoder = {'mpg123':  ['mpg123', '-w', outfile, self.song],
+                   'mpg321':  ['mpg321', '-w', outfile, self.song],
+                   'faad':    ['faad',  '-o' , outfile1, self.song],
+                   'ogg123':  ['ogg123', '-dwav', '-f' , outfile, self.song],
+                   'flac':    ['flac', '-o', outfile, '-d', self.song],
+                   'lame':    ['lame', '--quiet', '--decode', self.song, outfile],
+                   'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=temp.wav', self.song],
+                   'alac-decoder': ['alac-decoder', '-f' , outfile, self.song],
+                   'cd-cdparanoia': ['cdparanoia', '-Y', '-q',  '-w', '-d', self.device, str(self.track), outfile],
+                   'cd-icedax':      ['icedax', '-H', '-t', str(self.track), '-D',self.device],
+                   'cd-cdda2wav':    ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device],
+                   'cd-mplayer':     ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=temp.wav', '-cdrom-device', self.device, "cdda://" + str(self.track)]}
         if use_pipe:
             return True, Popen(decoder[self.decoder], stdout=PIPE)
         else:
