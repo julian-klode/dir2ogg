@@ -83,6 +83,7 @@ def read_opts():
     parser.add_option('-r', '--recursive', action='store_true', help='convert files in all subdirectories of all directories specified as arguments')
     parser.add_option('-c', '--cdda', action='store_true', help="convert audio cd in all devices specified as arguments (or default: /dev/cdrom) [EXPERIMENTAL]")
     parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
+    parser.add_option('-t', '--smart-mp3', action='store_true', help='try to use similar quality as original mp3 file (overwrites -q)')
     parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
     parser.add_option('-a', '--convert-all', action='store_true', help="convert all supported formats")
     parser.add_option('--convert-flac', action='store_true', help="convert flac files (use with '-d')")        
@@ -292,7 +293,27 @@ class Convert(Id3TagHandler):
             if mmatch(self.song, pat):
                 self.decoder = getattr(self.conf, ext + '_decoder')
                 getattr(self, 'grab_%s_tags' % ext)()
+            if ext == 'mp3' and self.conf.smart_mp3:
+                self.smart_mp3()
         self.convert()
+
+    def smart_mp3(self):
+        # initial Code by "Marek Palatinus" <marek@palatinus.cz>, 2007
+        # Table of quality = relation between mp3 bitrate and vorbis quality. Source: wikipedia
+        # quality_table = {45:-1, 64:0, 80:1, 96:2, 112:3, 128:4, 160:5, 192:6, 224:7, 256:8, 320:9, 500:10 }
+        # log(0.015*bitrate, 1.19) is logaritmic regression of table above. Useful for mp3s in VBR :-).
+ 
+        try:
+            from mutagen.mp3 import MP3
+            import math
+            mp3info = MP3(self.song)
+            bitrate = mp3info.info.bitrate
+            self.conf.quality = round(math.log(0.015*bitrate/1000, 1.19))
+            if self.conf.quality < -1: # Lowest quality is -1
+                self.conf.quality = -1
+            info("(smartmp3) Detected bitrate: %d kbps\n(smartmp3) Assumed vorbis quality: %d" % ((bitrate/1000), self.conf.quality))
+        except ImportError:
+            warn('(smartmp3) You dont have mutagen installed. Bitrate detection failed. Using default quality %d' % self.conf.quality)
 
     def decode(self):
         if self.decoder not in ('mplayer',) and not self.conf.no_pipe and not self.conf.preserve_wav:

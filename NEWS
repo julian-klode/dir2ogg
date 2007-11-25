@@ -1,8 +1,9 @@
 dir2ogg (0.11) UNRELEASED; urgency=low
 
   * Fix mpg123 (decode all frames again)
+  * Add smart-mp3 feature by Marek Palatinus. (Closes: #437263)
 
- -- Julian Andres Klode <jak@jak-linux.org>  Sun, 25 Nov 2007 13:23:49 +0100
+ -- Julian Andres Klode <jak@jak-linux.org>  Sun, 25 Nov 2007 13:26:41 +0100
 
 dir2ogg (0.11~rc1) RELEASED; urgency=low
 
