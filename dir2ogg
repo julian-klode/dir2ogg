@@ -38,8 +38,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11 RC 1'
-__date__    = '2007-11-04'
+__version__ = '0.11'
+__date__    = '2007-11-25'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
@@ -541,10 +541,9 @@ class ConvertDirectory:
 
 
 def show_banner():
-    print 'dir2ogg %s, (C) Julian Andres Klode and Darren Kirby. Released under GPL\n' % __version__
+    print 'dir2ogg %s (%s), converts audio files into ogg vorbis.\n' % (__version__, __date__)
 
 def show_license(*args, **kwargs):
-    print 'dir2ogg %s; released %s\n' % (__version__, __date__)
     print 'Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>'
     print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n'
     print 'This program is distributed in the hope that it will be useful,'
