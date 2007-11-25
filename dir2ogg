@@ -298,7 +298,7 @@ class Convert(Id3TagHandler):
         self.convert()
 
     def smart_mp3(self):
-        # initial Code by "Marek Palatinus" <marek@palatinus.cz>, 2007
+        # initial Code by Marek Palatinus <marek@palatinus.cz>, 2007
         # Table of quality = relation between mp3 bitrate and vorbis quality. Source: wikipedia
         # quality_table = {45:-1, 64:0, 80:1, 96:2, 112:3, 128:4, 160:5, 192:6, 224:7, 256:8, 320:9, 500:10 }
         # log(0.015*bitrate, 1.19) is logaritmic regression of table above. Useful for mp3s in VBR :-).
