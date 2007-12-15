@@ -175,9 +175,15 @@ class Id3TagHandler:
         for key, val in mydict.items():
             key = key.lower()
             key = convert and (key in convert and convert[key] or key) or key
-            if hasattr(val, 'text'): val=val.text
-            if key in self.accept:
-                self.tags[key] = isinstance(val, (int, bool)) and str(val) or val
+            if not key in self.accept:
+               continue
+            elif hasattr(val, 'text'):
+                val = val.text
+            elif isinstance(val, list):
+                val = [str(i) for i in val]
+            else:
+                val = [str(val)]
+            self.tags[key] = val
 
     def grab_m4a_tags(self):
         '''Import MP4 tags handler, set convert and call commonGrab'''
