@@ -1,9 +1,9 @@
-dir2ogg (0.11.1) UNRELEASED; urgency=low
+dir2ogg (0.11.1) RELEASED; urgency=low
 
   * Fix dir2ogg's wav support, so it works again.
   * More robust tag handling, fixes support for WMA/ASF
 
- -- Julian Andres Klode <jak@jak-linux.org>  Sat, 15 Dec 2007 21:56:56 +0100
+ -- Julian Andres Klode <jak@jak-linux.org>  Sat, 15 Dec 2007 22:56:54 +0100
 
 dir2ogg (0.11) RELEASED; urgency=low
 
