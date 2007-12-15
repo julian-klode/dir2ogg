@@ -38,13 +38,14 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11'
-__date__    = '2007-11-25'
+__version__ = '0.11.1'
+__date__    = '2007-12-15'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
            'wma': ('*.asf', '*.wma', '*.wmf'),
            'flac': ('*.flac',),
+           'wav': ('*.wav', ),
            }
 
 def mmatch(names, patterns, rbool=True):
@@ -124,7 +125,7 @@ def read_opts():
         if getattr(options, 'convert_' + ext):
             options.filters += pat
         # Missing decoders
-        if getattr(options, 'convert_' + ext) and not getattr(options, ext + '_decoder'):
+        if ext != 'wav' and getattr(options, 'convert_' + ext) and not getattr(options, ext + '_decoder'):
             fatal('%s was enabled, but no decoder has been found.' % ext)
 
     if len(args) == 0 and not options.cdda:
@@ -289,8 +290,9 @@ class Convert(Id3TagHandler):
         song_root    = os.path.splitext(song)[0] + "."
         self.songwav = song_root + 'wav'
         self.songogg = song_root + 'ogg'
+        self.decoder = ''
         for ext, pat in FILTERS.items():
-            if mmatch(self.song, pat):
+            if mmatch(self.song, pat) and ext != 'wav':
                 self.decoder = getattr(self.conf, ext + '_decoder')
                 getattr(self, 'grab_%s_tags' % ext)()
             if ext == 'mp3' and self.conf.smart_mp3:
@@ -387,7 +389,7 @@ class Convert(Id3TagHandler):
                 import traceback
                 traceback.print_exc()
                 return False
-        else:
+        elif self.songwav != self.song or 'cd-' in self.decoder:
             warn('No tags found...')
 
         if self.conf.delete_input:
