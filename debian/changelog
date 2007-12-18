@@ -1,8 +1,10 @@
 dir2ogg (0.11.1-1) unstable; urgency=low
 
   * New upstream release, fixing support for wav and wma.
+  * Upgrade to Debian Policy 3.7.3
+  * Recommend icedax as an alternative to cdparanoia
 
- -- Julian Andres Klode <jak@jak-linux.org>  Sat, 15 Dec 2007 22:56:41 +0100
+ -- Julian Andres Klode <jak@jak-linux.org>  Tue, 18 Dec 2007 12:03:05 +0100
 
 dir2ogg (0.11-1) unstable; urgency=low
 
