@@ -17,6 +17,6 @@ Description: audio file converter into ogg-vorbis format
  dir2ogg converts MP3, M4A, WMA, FLAC, WAV files and Audio CDs to the
  open-source OGG format.
  .
- It is a python script that simply binds together the various decoders and
+ It is a Python script that simply binds together the various decoders and
  oggenc making it easier for the user to convert his/her music files. It also
  supports ID3 tags.
