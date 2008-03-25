@@ -38,8 +38,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.2'
-__date__    = '2008-02-17'
+__version__ = '0.11.3'
+__date__    = '2008-03-25'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
@@ -179,10 +179,23 @@ class Id3TagHandler:
                 pass
             elif hasattr(val, 'text'):
                 val = val.text
-            elif isinstance(val, list):
-                val = [str(i) for i in val]
-            else:
-                val = [str(val)]
+            if convert:
+                new_val = []
+                if not isinstance(val, list):
+                    val = [val]
+                for i in val:
+                    if not isinstance(i, unicode):
+                        # Convert all invalid values to unicode
+                        try:
+                            new_val.append(unicode(i))
+                        except UnicodeDecodeError:
+                            warn('Ignoring UnicodeDecodeError in key %s' % key)
+                            new_val.append(unicode(i, errors='ignore'))
+                    else:
+                        new_val.append(i)
+                val = new_val
+                del new_val
+
             self.tags[key] = val
 
     def grab_m4a_tags(self):

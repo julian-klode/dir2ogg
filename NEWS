@@ -1,3 +1,9 @@
+dir2ogg (0.11.3) RELEASED; urgency=low
+
+  * More complete fix for tags with non-ascii values
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Tue, 25 Mar 2008 16:39:38 +0100
+
 dir2ogg (0.11.2) RELEASED; urgency=low
 
   * Fix FLAC tags with non-ascii values (Closes: #466107)
