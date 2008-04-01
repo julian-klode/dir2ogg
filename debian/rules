@@ -1,4 +1,13 @@
 #!/usr/bin/make -f
+# Check for DISTRIB_ID in /etc/lsb-release. Ignore Errors. Empty on Debian,
+# contains Ubuntu on Ubuntu systems
+DISTRO := $(shell sed -n 's/DISTRIB_ID=\(.*\)/\1/p' /etc/lsb-release 2>/dev/null)
+
+ifeq ($(DISTRO), Ubuntu)
+SUGGESTS := mplayer-nogui | mplayer, alac-decoder
+else
+RECOMMENDS := mplayer
+endif
 
 build:
 
@@ -23,7 +32,7 @@ binary-indep: build install
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	dh_gencontrol
+	dh_gencontrol -- -Vdistro:Recommends="$(RECOMMENDS)"  -Vdistro:Suggests="$(SUGGESTS)"
 	dh_md5sums
 	dh_builddeb
 

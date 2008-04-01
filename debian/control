@@ -12,7 +12,8 @@ VCS-Browser: http://codebrowse.launchpad.net/~juliank/dir2ogg/main/changes
 Package: dir2ogg
 Architecture: all
 Depends: python (>= 2.4), python-mutagen, vorbis-tools, mpg123 | mpg321
-Recommends: faad, mplayer, python-musicbrainz2, python-cddb, cdparanoia | icedax
+Recommends: faad, ${distro:Recommends}, python-musicbrainz2, python-cddb, cdparanoia | icedax
+Suggests: ${distro:Suggests}
 Description: audio file converter into ogg-vorbis format
  dir2ogg converts MP3, M4A, WMA, FLAC, WAV files and Audio CDs to the
  open-source OGG format.
