@@ -344,7 +344,7 @@ class Convert(Id3TagHandler):
             if 'mplayer' in self.decoder : self.songwav, self.conf.preserve_wav = 'temp.wav', False
             outfile = outfile1 = self.songwav
             use_pipe = 0
-        decoder = {'mpg123':  ['mpg123', '-w', outfile, self.song],
+        decoder = {'mpg123':  ['mpg123', '-w', outfile1, self.song],
                    'mpg321':  ['mpg321', '-w', outfile, self.song],
                    'faad':    ['faad',  '-o' , outfile1, self.song],
                    'ogg123':  ['ogg123', '-dwav', '-f' , outfile, self.song],
