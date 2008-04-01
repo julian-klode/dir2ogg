@@ -38,8 +38,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.3'
-__date__    = '2008-03-25'
+__version__ = '0.11.4'
+__date__    = '2008-04-01'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
@@ -448,7 +448,9 @@ class ConvertDisc:
 
         disc_id    = DiscID.disc_id(DiscID.open(self.dev))
         query_info = CDDB.query(disc_id)[1]
-        if type(query_info) == list:
+        if not query_info:
+            fatal('The disk is not listed in FreeDB, dir2ogg only supports disk listed in MusicBrainz or FreeDB')
+        if isinstance(query_info, list):
             query_info = query_info[0]
         read_info = CDDB.read(query_info['category'], query_info['disc_id'])[1]
 
