@@ -1,3 +1,9 @@
+dir2ogg (0.11.5) RELEASED; urgency=low
+
+  * Fix support for files with no headers (LP: #229179)
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Wed, 14 May 2008 17:26:52 +0200
+
 dir2ogg (0.11.4) RELEASED; urgency=medium
 
   * Print error message if CD is not in FreeDB (LP: #198845)
