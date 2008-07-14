@@ -1,3 +1,24 @@
+dir2ogg (0.11.6) RELEASED; urgency=low
+
+  * The "Marek Palatinus" release
+
+  [ Marek Palatinus ]
+  * Bugfix: function grab_flac_tags() is missing argument "convert" in
+    calling grab_common. (First reported by Gary Jackson)
+  * Bugfix: When --smart-mp3 was used and some files was not "mp3", they
+    used quality of last tested mp3 file. Currently, when detection
+    fails, default quality given thru cmdline parameter is used instead.
+  * Bugfix: Quality is count as float, not integer (problem in oggenc
+    calling)
+  * Improvement: Added parameter "-T --smart-mp3-correction". You can
+    specify difference between detected quality and used quality. When
+    algorithm detected quality "6" and you specify -T 2, quality 4 (= 6
+    - 2) is used. It accept also floats and negative numbers. So you can
+    raise quality to 1.5 by adding "-T -1.5".
+  * Improvement: Better regression function.
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Mon, 14 Jul 2008 20:47:17 +0200
+
 dir2ogg (0.11.5) RELEASED; urgency=low
 
   * Fix support for files with no headers (LP: #229179)

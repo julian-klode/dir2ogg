@@ -38,8 +38,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.4'
-__date__    = '2008-04-01'
+__version__ = '0.11.6'
+__date__    = '2008-07-14'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
@@ -83,6 +83,7 @@ def read_opts():
     parser.add_option('-c', '--cdda', action='store_true', help="convert audio cd in all devices specified as arguments (or default: /dev/cdrom) [EXPERIMENTAL]")
     parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
     parser.add_option('-t', '--smart-mp3', action='store_true', help='try to use similar quality as original mp3 file (overwrites -q)')
+    parser.add_option('-T', '--smart-mp3-correction', metavar='N', default=0.0, type='float', help='decrease detected quality (implies -t)')
     parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
     parser.add_option('-a', '--convert-all', action='store_true', help="convert all supported formats")
     parser.add_option('-f', '--convert-flac', action='store_true', help="convert flac files (use with '-d')")
@@ -277,7 +278,7 @@ class Id3TagHandler:
     def grab_flac_tags(self):
         '''Import MP3 tags handler, and call commonGrab'''
         from mutagen.flac import FLAC, error
-        self.grab_common(FLAC, error)
+        self.grab_common(FLAC, error=error)
 
     def grab_mp3_tags(self):
         '''Import MP3 tags handler, and call commonGrab'''
@@ -317,13 +318,18 @@ class Convert(Id3TagHandler):
         self.songwav = song_root + 'wav'
         self.songogg = song_root + 'ogg'
         self.decoder = ''
+        # (smartmp3) I have to remember default quality for next files
+        original_quality = self.conf.quality
         for ext, pat in FILTERS.items():
             if mmatch(self.song, pat) and ext != 'wav':
                 self.decoder = getattr(self.conf, ext + '_decoder')
                 getattr(self, 'grab_%s_tags' % ext)()
-            if ext == 'mp3' and self.conf.smart_mp3:
-                self.smart_mp3()
+                if ext == 'mp3' and  (self.conf.smart_mp3 or \
+                                      self.conf.smart_mp3_correction):
+                    self.smart_mp3()
         self.convert()
+        # (smartmp3) Replacing quality by default value
+        self.conf.quality = original_quality
 
     def smart_mp3(self):
         # initial Code by Marek Palatinus <marek@palatinus.cz>, 2007
@@ -332,16 +338,23 @@ class Convert(Id3TagHandler):
         # log(0.015*bitrate, 1.19) is logaritmic regression of table above. Useful for mp3s in VBR :-).
  
         try:
-            from mutagen.mp3 import MP3
-            import math
+            from mutagen.mp3 import MP3, HeaderNotFoundError
+        except ImportError:
+            warn('(smartmp3) You dont have mutagen installed. Bitrate detection failed. Using default quality %.02f' % self.conf.quality)
+            return
+        try:    
             mp3info = MP3(self.song)
             bitrate = mp3info.info.bitrate
-            self.conf.quality = round(math.log(0.015*bitrate/1000, 1.19))
-            if self.conf.quality < -1: # Lowest quality is -1
-                self.conf.quality = -1
-            info("(smartmp3) Detected bitrate: %d kbps\n(smartmp3) Assumed vorbis quality: %d" % ((bitrate/1000), self.conf.quality))
-        except ImportError:
-            warn('(smartmp3) You dont have mutagen installed. Bitrate detection failed. Using default quality %d' % self.conf.quality)
+        except HeaderNotFoundError:
+            info('(smartmp3) File is not an mp3 stream. Using default quality %.02f' % self.conf.quality)
+            return
+
+        import math
+        self.conf.quality = round(5.383 * math.log(0.01616 * bitrate/1000.) - self.conf.smart_mp3_correction, 2)
+        self.conf.quality = max(self.conf.quality, -1) # Lowest quality is -1
+        self.conf.quality = min(self.conf.quality, 10) # Highest quality is 10
+        info("(smartmp3) Detected bitrate: %d kbps" % (bitrate/1000))
+        info("(smartmp3) Assumed vorbis quality: %.02f" % self.conf.quality)
 
     def decode(self):
         if self.decoder not in ('mplayer',) and not self.conf.no_pipe and not self.conf.preserve_wav:
@@ -386,7 +399,7 @@ class Convert(Id3TagHandler):
             return
 
         if dec:
-            enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality), '-'], stdin=dec.stdout)
+            enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), '-'], stdin=dec.stdout)
             enc.communicate()
             dec.wait()
             if dec.returncode < 0:
@@ -396,7 +409,7 @@ class Convert(Id3TagHandler):
                 warn('Encoding of "%s" failed.' % self.song)
                 return False
         else:
-            enc = call(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality), self.songwav])
+            enc = call(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), self.songwav])
             if enc != 0:
                 warn('Encoding of "%s" failed.' % self.songwav)
                 return False
