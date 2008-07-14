@@ -1,3 +1,10 @@
+dir2ogg (0.11.6-1) unstable; urgency=low
+
+  * The 'Marek Palatinus' release, fixing a serious bug with FLAC files, and
+    improving the smart-mp3 feature.
+
+ -- Julian Andres Klode <jak@jak-linux.org>  Mon, 14 Jul 2008 21:04:24 +0200
+
 dir2ogg (0.11.5-1) unstable; urgency=low
 
   * New bugfix release: Fix support for files with no headers (LP: #229179)
