@@ -38,8 +38,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.6'
-__date__    = '2008-07-14'
+__version__ = '0.11.7'
+__date__    = '2009-05-03'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
@@ -399,8 +399,14 @@ class Convert(Id3TagHandler):
             warn('Decoding of "%s" failed.' % self.song)
             return
 
+
+        if dec and self.decoder == 'mpg123':
+            import mutagen
+            opts=['-R', str(mutagen.File(self.song).info.sample_rate)]
+        else:
+            opts=[]
         if dec:
-            enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), '-'], stdin=dec.stdout)
+            enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), '-'] + opts, stdin=dec.stdout)
             enc.communicate()
             dec.wait()
             if dec.returncode < 0:
