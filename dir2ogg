@@ -463,6 +463,8 @@ class ConvertDisc:
     '''Wrapper around ConvertTrack to Convert complete cds
     Currently uses MusicBrainz, but a CDDB fallback will be added, too.'''
     def __init__(self, dev, conf):
+        warn("Converting CDs is not well supported, please use another "
+             "solution.")
         self.dev, self.conf = dev, conf
         try:
             self.get_mb()
@@ -506,7 +508,7 @@ class ConvertDisc:
             import musicbrainz2.disc as mbdisc
             import musicbrainz2.webservice as mbws
         except ImportError, err:
-            warn('You need python-musicbrainz2 to convert cds. Please install it. Trying cddb.')
+            warn('You need python-musicbrainz2 (or python-cddb) to convert cds. Please install it. Trying cddb.')
             raise self.MBError, err
 
         service = mbws.WebService()
