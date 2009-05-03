@@ -2,6 +2,7 @@ dir2ogg (0.11.7) UNRELEASED; urgency=low
 
   * Recognize the track number in mp3 files
   * Fix problems with mpg123 and files not using 44100Hz (LP: #272341)
+  * Make --preserve-wav work when using mplayer (Closes: #513566)
 
  -- Julian Andres Klode <jak@jak-linux.org>  Sun, 03 May 2009 14:45:59 +0200
 

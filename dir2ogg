@@ -358,11 +358,12 @@ class Convert(Id3TagHandler):
         info("(smartmp3) Assumed vorbis quality: %.02f" % self.conf.quality)
 
     def decode(self):
+        # Used for mplayer
+        tempwav = 'dir2ogg-%s-temp.wav' % os.getpid()
         if self.decoder not in ('mplayer',) and not self.conf.no_pipe and not self.conf.preserve_wav:
             outfile, outfile1 = '-', '/dev/stdout'
             use_pipe = 1
         else:
-            if 'mplayer' in self.decoder : self.songwav, self.conf.preserve_wav = 'temp.wav', False
             outfile = outfile1 = self.songwav
             use_pipe = 0
         decoder = {'mpg123':  ['mpg123', '-w', outfile1, self.song],
@@ -371,7 +372,7 @@ class Convert(Id3TagHandler):
                    'ogg123':  ['ogg123', '-dwav', '-f' , outfile, self.song],
                    'flac':    ['flac', '-o', outfile, '-d', self.song],
                    'lame':    ['lame', '--quiet', '--decode', self.song, outfile],
-                   'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=temp.wav', self.song],
+                   'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + tempwav, self.song],
                    'alac-decoder': ['alac-decoder',  self.song],
                    'cd-cdparanoia': ['cdparanoia', '-Z', '-q',  '-w', '-d', self.device, str(self.track), outfile],
                    'cd-icedax':      ['icedax', '-H', '-t', str(self.track), '-D',self.device],
@@ -383,6 +384,10 @@ class Convert(Id3TagHandler):
             decoder['cd-cdparanoia'].remove('-q')
             decoder['lame'].remove('--quiet')
             retcode = call(decoder[self.decoder])
+            if self.decoder == 'mplayer':
+                # Move the file for mplayer (which uses tempwav), so it works
+                # for --preserve-wav.
+                os.rename(tempwav, self.songwav)
             if retcode != 0:
                 return (False, None)
             else:
