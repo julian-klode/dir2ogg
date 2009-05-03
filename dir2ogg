@@ -162,9 +162,10 @@ class Id3TagHandler:
               'musicbrainz_trmid', 'musicip_puid', 'podcast', 'podcasturl',
               'releasecountry', 'musicbrainz_albumstatus', 'musicbrainz_albumtype', 'remixer', 'show',
               'showsort', 'subtitle', 'title', 'titlesort', 'tracknumber', 'tracktotal']
-    tags   = {}
+
     def __init__(self, song):
         self.song = song
+        self.tags = {}
 
     def grab_common(self, handler, convert=None, error=None):
         '''Common grabber, starts the handler and applies the tags to self.tags'''
