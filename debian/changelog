@@ -1,3 +1,16 @@
+dir2ogg (0.11.7-1) unstable; urgency=low
+
+  * New bugfix release:
+    - Fix problems with mpg123 and files not using 44100Hz (LP: #272341)
+    - Make --preserve-wav work when using mplayer (Closes: #513566)
+    - Fix problem where tags from one file appear in other files (LP: #276037)
+  * Some packaging changes:
+    - Move all CD-related dependencies from Recommends to Suggests
+    - Update e-mail address
+    - Update to Standards-Version 3.8.1
+
+ -- Julian Andres Klode <jak@debian.org>  Sun, 03 May 2009 16:17:14 +0200
+
 dir2ogg (0.11.6-1) unstable; urgency=low
 
   * The 'Marek Palatinus' release, fixing a serious bug with FLAC files, and
