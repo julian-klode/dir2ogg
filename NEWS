@@ -3,6 +3,7 @@ dir2ogg (0.11.8) UNRELEASED; urgency=low
   * Process files in alphabetical order (Closes: #536040).
   * Support converting directories without specifying -d (Closes: #535209).
   * Introduce support for Monkey's Audio with APEv2 tags (LP: #279834).
+  * Introduce support for Musepack with APEv2 tags.
 
  -- Julian Andres Klode <jak@debian.org>  Tue, 04 Aug 2009 17:37:18 +0200
 
