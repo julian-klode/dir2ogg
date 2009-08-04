@@ -1,3 +1,18 @@
+dir2ogg (0.11.8-1) unstable; urgency=low
+
+  * New upstream release:
+    - Process files in alphabetical order (Closes: #536040)
+    - Support converting directories without specifying -d (Closes: #535209)
+    - Introduce support for Monkey's Audio with APEv2 tags (LP: #279834),
+      and Musepack and WavPack audio files.
+    - More readable output, including progress messages about current file,
+      and the option --quiet to not show progress of oggenc.
+  * Packaging changes:
+    - Update Standards-Version to 3.8.2.
+    - Recommend musepack-tools and wavpack.
+
+ -- Julian Andres Klode <jak@debian.org>  Tue, 04 Aug 2009 20:18:59 +0200
+
 dir2ogg (0.11.7-1) unstable; urgency=low
 
   * New bugfix release:

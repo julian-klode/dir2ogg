@@ -6,7 +6,7 @@ DISTRO := $(shell sed -n 's/DISTRIB_ID=\(.*\)/\1/p' /etc/lsb-release 2>/dev/null
 ifeq ($(DISTRO), Ubuntu)
 SUGGESTS := mplayer-nogui | mplayer, alac-decoder
 else
-RECOMMENDS := mplayer
+RECOMMENDS := mplayer, musepack-tools
 endif
 
 build:
