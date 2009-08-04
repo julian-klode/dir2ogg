@@ -1,4 +1,4 @@
-dir2ogg (0.11.8) UNRELEASED; urgency=low
+dir2ogg (0.11.8) RELEASED; urgency=low
 
   * Process files in alphabetical order (Closes: #536040).
   * Support converting directories without specifying -d (Closes: #535209).
@@ -11,7 +11,7 @@ dir2ogg (0.11.8) UNRELEASED; urgency=low
     - Do not show progress from decoder at at all, as it may conflict with
       the output of oggenc.
 
- -- Julian Andres Klode <jak@debian.org>  Tue, 04 Aug 2009 17:37:18 +0200
+ -- Julian Andres Klode <jak@debian.org>  Tue, 04 Aug 2009 20:23:00 +0200
 
 dir2ogg (0.11.7) RELEASED; urgency=low
 
