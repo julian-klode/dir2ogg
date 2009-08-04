@@ -1,4 +1,10 @@
-dir2ogg (0.11.7) UNRELEASED; urgency=low
+dir2ogg (0.11.8) UNRELEASED; urgency=low
+
+  * Process files in alphabetical order (Closes: #536040)
+
+ -- Julian Andres Klode <jak@debian.org>  Tue, 04 Aug 2009 17:37:18 +0200
+
+dir2ogg (0.11.7) RELEASED; urgency=low
 
   * Recognize the track number in mp3 files
   * Fix problems with mpg123 and files not using 44100Hz (LP: #272341)

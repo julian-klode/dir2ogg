@@ -583,7 +583,7 @@ class ConvertDirectory:
             fatal('Directory: "%s" not found' % directory)
 
         self.directory = directory = os.path.normpath(directory) + os.path.sep
-        self.songs = mmatch(files, conf.filters, False)
+        self.songs = sorted(mmatch(files, conf.filters, False))
 
         if conf.verbose:
             self.print_if_verbose()
@@ -627,13 +627,13 @@ def main():
                 rdirs.update(return_dirs(path))
             elif conf.directory:
                 rdirs.update({path: os.listdir(path)})
-        for directory, files in rdirs.items():
+        for directory, files in sorted(rdirs.items()):
             ConvertDirectory(conf, directory, files)
     else:
         for path in conf_args:
             if not os.path.isfile(path):
                 fatal('Path: %s does not exists' % path)
-        for filename in conf_args:
+        for filename in sorted(conf_args):
             Convert(filename, conf)
 
     sys.exit(0)
