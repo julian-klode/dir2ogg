@@ -47,6 +47,7 @@ FILTERS = {'mp3': ('*.mp3',),
            'wma': ('*.asf', '*.wma', '*.wmf'),
            'flac': ('*.flac',),
            'ape': ('*.ape',),
+           'wv': ('*.wv',),
            'wav': ('*.wav', ),
            }
 
@@ -94,6 +95,7 @@ def read_opts():
     parser.add_option('-M', '--convert-mpc', action='store_true', help="convert all MPC files found in directories")
     parser.add_option('-w', '--convert-wav', action='store_true', help="convert all WAV files found in directories")
     parser.add_option('-W', '--convert-wma', action='store_true', help="convert all WMA files found in directories")
+    parser.add_option('-V', '--convert-wv', action='store_true', help="convert all WV files found in directories")
     parser.add_option('--delete-input', action='store_true', help='delete input files')
     parser.add_option('-p', '--preserve-wav', action='store_true', help='keep the wav files (also includes -P)')
     parser.add_option('-P', '--no-pipe', action='store_true', help='Do not use pipes, use temporary wav files')
@@ -106,6 +108,7 @@ def read_opts():
         'flac': ('flac', 'ogg123', 'mplayer'),
         'cd':  ('cdparanoia', 'icedax','cdda2wav', 'mplayer'),
         'ape': ('mac', 'mplayer'),
+        'wv':  ('wvunpack', 'mplayer'),
         'mpc': ('mpcdec', 'mplayer'),
         }
 
@@ -219,9 +222,8 @@ class Id3TagHandler:
         convert = {'year': 'date'}
         self.grab_common(APEv2, convert, error)
 
-    def grab_mpc_tags(self):
-        '''Musepack files, just call grab_ape_tags().'''
-        return self.grab_ape_tags()
+    grab_mpc_tags = grab_ape_tags # Musepack files use APEv2.
+    grab_wv_tags = grab_ape_tags # WavPack files use APEv2.
         
     def grab_m4a_tags(self):
         '''Import MP4 tags handler, set convert and call commonGrab'''
@@ -392,6 +394,7 @@ class Convert(Id3TagHandler):
                    'mac':     ['mac', self.song, outfile, '-d'],
                    'mpcdec':  ['mpcdec', self.song, outfile],
                    'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + tempwav, self.song],
+                   'wvunpack': ['wvunpack', '-q', self.song, '-o', outfile],
                    'alac-decoder': ['alac-decoder',  self.song],
                    'cd-cdparanoia': ['cdparanoia', '-Z', '-q',  '-w', '-d', self.device, str(self.track), outfile],
                    'cd-icedax':      ['icedax', '-H', '-t', str(self.track), '-D',self.device],
