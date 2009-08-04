@@ -42,12 +42,12 @@ __version__ = '0.11.7'
 __date__    = '2009-05-03'
 
 FILTERS = {'mp3': ('*.mp3',),
-           'mpc': ('*.mpc',),
+           'mpc': ('*.mpc','*.mpp', '*.mp+'),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
            'wma': ('*.asf', '*.wma', '*.wmf'),
            'flac': ('*.flac',),
            'ape': ('*.ape',),
-           'wv': ('*.wv',),
+           'wv': ('*.wv','*.wvc'),
            'wav': ('*.wav', ),
            }
 
