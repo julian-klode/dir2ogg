@@ -45,6 +45,7 @@ FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
            'wma': ('*.asf', '*.wma', '*.wmf'),
            'flac': ('*.flac',),
+           'ape': ('*.ape',),
            'wav': ('*.wav', ),
            }
 
@@ -86,10 +87,11 @@ def read_opts():
     parser.add_option('-T', '--smart-mp3-correction', metavar='N', default=0.0, type='float', help='decrease detected quality (implies -t)')
     parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
     parser.add_option('-a', '--convert-all', action='store_true', help="convert all supported formats")
-    parser.add_option('-f', '--convert-flac', action='store_true', help="convert flac files (use with '-d')")
-    parser.add_option('-m', '--convert-m4a', action='store_true', help="convert m4a files (use with '-d')")
-    parser.add_option('-w', '--convert-wav', action='store_true', help="convert wav files (use with '-d')")
-    parser.add_option('-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
+    parser.add_option('-A', '--convert-ape', action='store_true', help="convert all APE files found in directories.")
+    parser.add_option('-f', '--convert-flac', action='store_true', help="convert all FLAC files found in directories")
+    parser.add_option('-m', '--convert-m4a', action='store_true', help="convert all M4A files found in directories")
+    parser.add_option('-w', '--convert-wav', action='store_true', help="convert all WAV files found in directories")
+    parser.add_option('-W', '--convert-wma', action='store_true', help="convert all WMA files found in directories")
     parser.add_option('--delete-input', action='store_true', help='delete input files')
     parser.add_option('-p', '--preserve-wav', action='store_true', help='keep the wav files (also includes -P)')
     parser.add_option('-P', '--no-pipe', action='store_true', help='Do not use pipes, use temporary wav files')
@@ -101,6 +103,7 @@ def read_opts():
         'm4a': ('faad', 'mplayer'),
         'flac': ('flac', 'ogg123', 'mplayer'),
         'cd':  ('cdparanoia', 'icedax','cdda2wav', 'mplayer'),
+        'ape': ('mac', 'mplayer'),
         }
 
     for ext, dec in commands.items():
@@ -207,6 +210,12 @@ class Id3TagHandler:
 
             self.tags[key] = val
 
+    def grab_ape_tags(self):
+        '''Convert APE tags.'''
+        from mutagen.apev2 import APEv2, error
+        convert = {'year': 'date'}
+        self.grab_common(APEv2, convert, error)
+        
     def grab_m4a_tags(self):
         '''Import MP4 tags handler, set convert and call commonGrab'''
         convert = {'----:com.apple.iTunes:ASIN': 'asin',
@@ -373,6 +382,7 @@ class Convert(Id3TagHandler):
                    'ogg123':  ['ogg123', '-dwav', '-f' , outfile, self.song],
                    'flac':    ['flac', '-o', outfile, '-d', self.song],
                    'lame':    ['lame', '--quiet', '--decode', self.song, outfile],
+                   'mac':     ['mac', self.song, outfile, '-d'],
                    'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + tempwav, self.song],
                    'alac-decoder': ['alac-decoder',  self.song],
                    'cd-cdparanoia': ['cdparanoia', '-Z', '-q',  '-w', '-d', self.device, str(self.track), outfile],
