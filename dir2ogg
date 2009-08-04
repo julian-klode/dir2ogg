@@ -78,7 +78,7 @@ def read_opts():
         fatal('No arguments specified, see --help for usage.')
     parser = OptionParser(usage='%prog [options] [arguments]', version='%prog ' + __version__)
     parser.add_option('-l', '--license', action='callback', callback=show_license, help='display license informations')
-    parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments')
+    parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments (not needed anymore)')
     parser.add_option('-r', '--recursive', action='store_true', help='convert files in all subdirectories of all directories specified as arguments')
     parser.add_option('-c', '--cdda', action='store_true', help="convert audio cd in all devices specified as arguments (or default: /dev/cdrom) [EXPERIMENTAL]")
     parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
@@ -618,23 +618,25 @@ def main():
         discs = len(conf_args) and conf_args or ("/dev/cdrom",)
         for disc in discs:
             ConvertDisc(disc, conf)
-    elif conf.directory or conf.recursive:
+    else:
         rdirs = {}
         for path in conf_args:
-            if not os.path.isdir(path):
-                fatal('Path: %s does not exists' % path)
+            if not os.path.exists(path):
+                fatal('Path %r does not exists' % path)
+            if os.path.isfile(path):
+                dirname = os.path.dirname(os.path.abspath(path))
+                try:
+                    rdirs[dirname].append(os.path.basename(path))
+                except KeyError:
+                    rdirs[dirname] = [os.path.basename(path)]
+            elif not os.path.isdir(path):
+                fatal('%r must be a directory or a file.' % path)
             elif conf.recursive:
-                rdirs.update(return_dirs(path))
-            elif conf.directory:
-                rdirs.update({path: os.listdir(path)})
-        for directory, files in sorted(rdirs.items()):
+                rdirs.update(return_dirs(os.path.abspath(path)))
+            else:
+                rdirs[os.path.abspath(path)] = os.listdir(path)
+        for directory, files in rdirs.items():
             ConvertDirectory(conf, directory, files)
-    else:
-        for path in conf_args:
-            if not os.path.isfile(path):
-                fatal('Path: %s does not exists' % path)
-        for filename in sorted(conf_args):
-            Convert(filename, conf)
 
     sys.exit(0)
 
