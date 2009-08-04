@@ -1,4 +1,4 @@
-.TH DIR2OGG 1 "2007-11-25" "dir2ogg 0.11"
+.TH DIR2OGG 1 "2009-08-04" "dir2ogg 0.11.8"
 .SH NAME
 dir2ogg \- Convert MP3, WAV, and M4A files to OGG format
 .SH SYNOPSIS
@@ -17,7 +17,9 @@ Keep in mind that converting from MP3 or M4A to OGG is a conversion between two 
 print quick usage details to the screen.
 .TP
 \fB\-d or \-\-directory\fP
-convert all MP3 files in \fIdirectory\fP. WAV and M4A files will be converted if used with the \fI\-w\fP and \fI\-m\fP command line flags.
+convert all MP3 files in \fIdirectory\fP. WAV and M4A files will be converted
+if used with the \fI\-w\fP and \fI\-m\fP command line flags. This option is for
+compatibility purposes only and does not need to be specified anymore.
 .TP
 \fB\-r or \-\-recursive\fP
 like \fI\-d\fP but descends recursively into directories.
@@ -40,24 +42,42 @@ increase \fIdir2ogg\fP's verbosity.
 .SS Conversion options
 .TP
 \fB\-\-convert-all\fP
-convert all supported audio files to OGG. Only used with \fI\-d\fP or \fI\-r\fP. Requires at least mplayer.
+Convert all supported audio files found in the directories given on the
+command-line to Ogg Vorbis.
+.TP
+\fB\-f or \-\-convert-ape\fP
+Convert all APE (Monkey's Audio) files found in the directories given on
+the command-line to Ogg Vorbis, using either ogg123 or flac or mplayer.
 .TP
 \fB\-f or \-\-convert-flac\fP
-convert FLAC files to OGG. Only used with \fI\-d\fP or \fI\-r\fP. Requires ogg123 or flac or mplayer.
+Convert all FLAC (Free Lossless Audio Codec) files found in the directories
+given on the command-line to Ogg Vorbis, using ogg123 or flac or mplayer.
 .TP
 \fB\-m or \-\-convert-m4a\fP
-convert M4A files to OGG. Only used with \fI\-d\fP or \fI\-r\fP. Requires faad or mplayer or, for alac, alac-decoder (though mplayer will work, too)
+convert all M4A (MPEG-4 Audio) files found in the directories given on the
+command-line to Ogg Vorbis, using faad or mplayer. For decoding ALAC
+(Apple Lossless) files, 'alac-decoder' may be used.
+.TP
+\fB\-m or \-\-convert-mpc\fP
+convert all MPC (MusePack) files found in the directories given on the
+command-line to Ogg Vorbis, using mpcdec or mplayer.
 .TP
 \fB\-W or \-\-convert-wma\fP
-convert WMA files to OGG. Only used with \fI\-d\fP or \fI\-r\fP. Requires mplayer.
+Convert all WMA (Windows Media Audio) files found in the directories given
+on the command-line to Ogg Vorbis, using mplayer.
 .TP
 \fB\-w or \-\-convert-wav\fP
-convert WAV files to OGG. Only used with \fI\-d\fP or \fI\-r\fP.
+Convert all WAV files found in the directories given on the command-line
+to Ogg Vorbis.
+.TP
+\fB\-V or \-\-convert-wv\fP
+Convert all WV (WavPack) files found in the directories given on the
+command-line to Ogg Vorbis.
 .TP
 \fB\-n or \-\-no-mp3\fP
-ignore MP3 files when converting a directory. Only used with \fI\-d\fP or \fI\-r\fP.
+ingore all MP3 files found in directories given on the command-line.
 .TP
-\fB\-\-(cd|flac|m4a|mp3|wma)\-decoder=COMMAND\fP
+\fB\-\-(ape|cd|flac|m4a|mp3|mpc|wma|wv)\-decoder=COMMAND\fP
 Set the decoder you want to use for one filetype, e.g.: \-\-mp3-decoder=lame.
 Run dir2ogg \-\-help to see the available decoders.
 .TP
