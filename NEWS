@@ -5,6 +5,11 @@ dir2ogg (0.11.8) UNRELEASED; urgency=low
   * Introduce support for Monkey's Audio with APEv2 tags (LP: #279834).
   * Introduce support for Musepack with APEv2 tags.
   * Introduce support for WavPack files with APEv2 tags.
+  * Make output more readable:
+    - Progress message stating the current file and the decoder.
+    - New command-line option -Q,--quiet to not display progress from oggenc.
+    - Do not show progress from decoder at at all, as it may conflict with
+      the output of oggenc.
 
  -- Julian Andres Klode <jak@debian.org>  Tue, 04 Aug 2009 17:37:18 +0200
 
