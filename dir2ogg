@@ -340,18 +340,6 @@ class Convert(Id3TagHandler):
         self.songwav = song_root + 'wav'
         self.songogg = song_root + 'ogg'
         self.decoder = ''
-        # (smartmp3) I have to remember default quality for next files
-        original_quality = self.conf.quality
-        for ext, pat in FILTERS.items():
-            if mmatch(self.song, pat) and ext != 'wav':
-                self.decoder = getattr(self.conf, ext + '_decoder')
-                getattr(self, 'grab_%s_tags' % ext)()
-                if ext == 'mp3' and  (self.conf.smart_mp3 or \
-                                      self.conf.smart_mp3_correction):
-                    self.smart_mp3()
-        self.convert()
-        # (smartmp3) Replacing quality by default value
-        self.conf.quality = original_quality
 
     def smart_mp3(self):
         # initial Code by Marek Palatinus <marek@palatinus.cz>, 2007
@@ -418,6 +406,24 @@ class Convert(Id3TagHandler):
                 return (True, None)
 
     def convert(self):
+        '''Convert with optional smartmp3 feature'''
+        # (smartmp3) I have to remember default quality for next files
+        original_quality = self.conf.quality
+        try:
+            for ext, pat in FILTERS.items():
+                if mmatch(self.song, pat) and ext != 'wav':
+                    self.decoder = getattr(self.conf, ext + '_decoder')
+                    getattr(self, 'grab_%s_tags' % ext)()
+                    if ext == 'mp3' and  (self.conf.smart_mp3 or \
+                                          self.conf.smart_mp3_correction):
+                        self.smart_mp3()
+
+            return self.convert_nosmart()
+        # (smartmp3) Replacing quality by default value
+        finally:
+            self.conf.quality = original_quality
+
+    def convert_nosmart(self):
         ''' Convert wav -> ogg.'''
         info('Converting "%s" (using %s as decoder)...' % (self.song, self.decoder))
         if self.songwav == self.song:
@@ -427,7 +433,7 @@ class Convert(Id3TagHandler):
             success, dec = self.decode()
         if not success:
             warn('Decoding of "%s" with %s failed.' % (self.song, self.decoder))
-            return
+            return False
 
 
         if dec and self.decoder == 'mpg123':
@@ -608,14 +614,17 @@ class ConvertDirectory:
         if os.path.exists(directory) == 0:
             fatal('Directory: "%s" not found' % directory)
 
+        self.conf = conf
         self.directory = directory = os.path.normpath(directory) + os.path.sep
         self.songs = sorted(mmatch(files, conf.filters, False))
 
         if conf.verbose:
             self.print_if_verbose()
 
-        for song in self.songs:
-            Convert(directory + song, conf)
+    def convert(self):
+        '''Convert the files'''
+        return all(Convert(self.directory + song, self.conf).convert()
+                   for song in self.songs)
 
     def print_if_verbose(self):
         ''' Echo files to be converted if verbose flag is set.'''
@@ -661,8 +670,13 @@ def main():
                 rdirs.update(return_dirs(os.path.abspath(path)))
             else:
                 rdirs[os.path.abspath(path)] = os.listdir(path)
+
+        success = True
         for directory, files in rdirs.items():
-            ConvertDirectory(conf, directory, files)
+            if not ConvertDirectory(conf, directory, files).convert():
+                success = False
+        if not success:
+            sys.exit(2)
 
     sys.exit(0)
 
