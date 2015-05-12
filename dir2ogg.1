@@ -2,7 +2,7 @@
 .SH NAME
 dir2ogg \- Convert MP3, WAV, and M4A files to OGG format
 .SH SYNOPSIS
-\fBdir2ogg\fP [ options ] ( \fIfilename\fP [\fIfilename2\fP] ... || \fIdirectory\fP [\fIdirectory2\fP] ... || [\fIcdrom-device\fP] ... )
+\fBdir2ogg\fP [ options ] ( \fIfilename\fP [\fIfilename2\fP] ... || \fIdirectory\fP [\fIdirectory2\fP] ... )
 .SH DESCRIPTION
 \fIdir2ogg\fP converts MP3, M4A, WMA and WAV files to the open\-source OGG format. \fIdir2ogg\fP is a python script that simply binds together mpg123, faad, and oggenc making it easier for the user to convert his/her music files. OGGs are about 15 to 20 percent smaller than MP3 files, with the same relative audio quality. \fIdir2ogg\fP can be called with the \fI\-d\fP flag at the command line to convert any number of directories at once, or given MP3, M4A, WMA,
 and/or WAV filenames as arguments, \fIdir2ogg\fP will convert only those files. If converting WAV, M4A or WMA files with \fI\-d\fP you must add
@@ -23,9 +23,6 @@ compatibility purposes only and does not need to be specified anymore.
 .TP
 \fB\-r or \-\-recursive\fP
 like \fI\-d\fP but descends recursively into directories.
-.TP
-\fB\-c or \-\-cdda\fP
-Convert an audio CD into ogg. You may pass the device as an argument to the script (default: /dev/cdrom). Requires cdparanoia orq icedax or mplayer
 .TP
 \fB\-p or \-\-preserve-wav\fP
 preserve all WAV files. By default they are deleted.
@@ -83,7 +80,7 @@ command-line to Ogg Vorbis.
 \fB\-n or \-\-no-mp3\fP
 ingore all MP3 files found in directories given on the command-line.
 .TP
-\fB\-\-(ape|cd|flac|m4a|mp3|mpc|wma|wv)\-decoder=COMMAND\fP
+\fB\-\-(ape|flac|m4a|mp3|mpc|wma|wv)\-decoder=COMMAND\fP
 Set the decoder you want to use for one filetype, e.g.: \-\-mp3-decoder=lame.
 Run dir2ogg \-\-help to see the available decoders.
 .TP
