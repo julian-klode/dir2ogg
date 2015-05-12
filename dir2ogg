@@ -648,7 +648,7 @@ def main():
         rdirs = {}
         for path in conf_args:
             if not os.path.exists(path):
-                fatal('Path %r does not exists' % path)
+                fatal('Path %r does not exist' % path)
             if os.path.isfile(path):
                 dirname = os.path.dirname(os.path.abspath(path))
                 try:
