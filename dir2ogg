@@ -433,9 +433,15 @@ class Convert(Id3TagHandler):
 
         if dec and self.decoder == 'mpg123':
             import mutagen
-            opts=['-r', '-R', str(mutagen.File(self.song).info.sample_rate)]
-            if mutagen.File(self.song).info.mode == 3:
-                opts +=['-C 1']
+            try:
+                opts=['-r', '-R', str(mutagen.File(self.song).info.sample_rate)]
+                if mutagen.File(self.song).info.mode == 3:
+                    opts +=['-C 1']
+            except Exception:
+                warn("An exception occurred while opening the mp3: %s" % self.song)
+                import traceback
+                traceback.print_exc()
+                return False
         else:
             opts=[]
         if self.conf.quiet:
