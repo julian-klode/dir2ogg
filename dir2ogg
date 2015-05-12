@@ -372,7 +372,7 @@ class Convert(Id3TagHandler):
         else:
             outfile = outfile1 = self.songwav
             use_pipe = 0
-        decoder = {'mpg123':  ['mpg123', '-q', '-w', outfile1, self.song],
+        decoder = {'mpg123':  ['mpg123', '-q', '-s', '-w', outfile1, self.song],
                    'mpg321':  ['mpg321', '-q', '-w', outfile, self.song],
                    'faad':    ['faad',  '-q', '-o' , outfile1, self.song],
                    'ogg123':  ['ogg123', '-q', '-dwav', '-f' , outfile, self.song],
@@ -384,8 +384,11 @@ class Convert(Id3TagHandler):
                    'wvunpack': ['wvunpack', '-q', self.song, '-o', outfile],
                    'alac-decoder': ['alac-decoder',  self.song]}
         if use_pipe:
+            decoder['mpg123'].remove('-w')
+            decoder['mpg123'].remove(outfile1)
             return True, Popen(decoder[self.decoder], stdout=PIPE)
         else:
+            decoder['mpg123'].remove('-s')
             decoder['lame'].remove('--quiet')
             retcode = call(decoder[self.decoder])
             if self.decoder == 'mplayer':
@@ -431,6 +434,8 @@ class Convert(Id3TagHandler):
         if dec and self.decoder == 'mpg123':
             import mutagen
             opts=['-r', '-R', str(mutagen.File(self.song).info.sample_rate)]
+            if mutagen.File(self.song).info.mode == 3:
+                opts +=['-C 1']
         else:
             opts=[]
         if self.conf.quiet:
