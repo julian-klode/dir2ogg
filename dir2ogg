@@ -39,8 +39,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.8'
-__date__    = '2009-08-04'
+__version__ = '0.12.0'
+__date__    = '2015-05-12'
 
 FILTERS = {'mp3': ('*.mp3',),
            'mpc': ('*.mpc','*.mpp', '*.mp+'),
@@ -84,7 +84,6 @@ def read_opts():
     parser.add_option('-l', '--license', action='callback', callback=show_license, help='display license informations')
     parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments (not needed anymore)')
     parser.add_option('-r', '--recursive', action='store_true', help='convert files in all subdirectories of all directories specified as arguments')
-    parser.add_option('-c', '--cdda', action='store_true', help="convert audio cd in all devices specified as arguments (or default: /dev/cdrom) [EXPERIMENTAL]")
     parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
     parser.add_option('-t', '--smart-mp3', action='store_true', help='try to use similar quality as original mp3 file (overwrites -q)')
     parser.add_option('-T', '--smart-mp3-correction', metavar='N', default=0.0, type='float', help='decrease detected quality (implies -t)')
@@ -108,7 +107,6 @@ def read_opts():
         'wma': ('mplayer',),
         'm4a': ('faad', 'mplayer'),
         'flac': ('flac', 'ogg123', 'mplayer'),
-        'cd':  ('cdparanoia', 'icedax','cdda2wav', 'mplayer'),
         'ape': ('mac', 'mplayer'),
         'wv':  ('wvunpack', 'mplayer'),
         'mpc': ('mpcdec', 'mplayer'),
@@ -126,7 +124,6 @@ def read_opts():
     # End of decoder options
     options, args = parser.parse_args()
 
-    options.convert_cd = options.cdda
     options.filters    = []
     for ext, pat in FILTERS.items():
         # Activate Encoders for files on the commandline
@@ -138,7 +135,7 @@ def read_opts():
         if ext != 'wav' and getattr(options, 'convert_' + ext) and not getattr(options, ext + '_decoder'):
             fatal('%s was enabled, but no decoder has been found.' % ext)
 
-    if len(args) == 0 and not options.cdda:
+    if len(args) == 0:
         fatal('No files/directories specified.')
     return options, args
 
@@ -385,15 +382,10 @@ class Convert(Id3TagHandler):
                    'mpcdec':  ['mpcdec', self.song, outfile],
                    'mplayer': ['mplayer', '-really-quiet', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + tempwav, self.song],
                    'wvunpack': ['wvunpack', '-q', self.song, '-o', outfile],
-                   'alac-decoder': ['alac-decoder',  self.song],
-                   'cd-cdparanoia': ['cdparanoia', '-Z', '-q',  '-w', '-d', self.device, str(self.track), outfile],
-                   'cd-icedax':      ['icedax', '-H', '-t', str(self.track), '-D',self.device],
-                   'cd-cdda2wav':    ['cdda2wav', '-H', '-t', str(self.track), '-D',self.device],
-                   'cd-mplayer':     ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=temp.wav', '-cdrom-device', self.device, "cdda://" + str(self.track)]}
+                   'alac-decoder': ['alac-decoder',  self.song]}
         if use_pipe:
             return True, Popen(decoder[self.decoder], stdout=PIPE)
         else:
-            decoder['cd-cdparanoia'].remove('-q')
             decoder['lame'].remove('--quiet')
             retcode = call(decoder[self.decoder])
             if self.decoder == 'mplayer':
@@ -473,133 +465,12 @@ class Convert(Id3TagHandler):
                 import traceback
                 traceback.print_exc()
                 return False
-        elif self.songwav != self.song or 'cd-' in self.decoder:
+        elif self.songwav != self.song:
             warn('No tags found...')
 
         if self.conf.delete_input:
             os.remove(self.song)
         return True
-
-class ConvertTrack(Convert):
-    '''Wrapper around Convert for CD Tracks'''
-    def __init__(self, device, conf, track, tags):
-        self.device, self.track, self.tags, self.conf = device, track, tags, conf
-        self.song    = ''
-        self.songwav = "audio.wav"
-        self.songogg = "%(artist)s/%(album)s/%(ntracknumber)s - %(title)s.ogg" % tags
-        self.conf.preserve_wav = False
-        self.decoder           = 'cd-' + self.conf.cd_decoder
-        self.convert()
-
-class ConvertDisc:
-    '''Wrapper around ConvertTrack to Convert complete cds
-    Currently uses MusicBrainz, but a CDDB fallback will be added, too.'''
-    def __init__(self, dev, conf):
-        warn("Converting CDs is not well supported, please use another "
-             "solution.")
-        self.dev, self.conf = dev, conf
-        try:
-            self.get_mb()
-        except self.MBError:
-            warn('MusicBrainz failed. Trying FreeDB...')
-            self.get_cddb()
-
-    class MBError(Exception):
-        '''Empty'''
-
-    def get_cddb(self):
-        try:
-            import CDDB, DiscID
-        except ImportError:
-            fatal('You need python-cddb (http://cddb-py.sf.net) to convert cds. Please install it.')
-
-        disc_id    = DiscID.disc_id(DiscID.open(self.dev))
-        query_info = CDDB.query(disc_id)[1]
-        if not query_info:
-            fatal('The disk is not listed in FreeDB, dir2ogg only supports disk listed in MusicBrainz or FreeDB')
-        if isinstance(query_info, list):
-            query_info = query_info[0]
-        read_info = CDDB.read(query_info['category'], query_info['disc_id'])[1]
-
-        for track in range(disc_id[1]):
-            title           = {}
-            title['discid'] = query_info['disc_id']
-            title['artist'], title['album'] = (track.strip() for track in query_info['title'].split("/"))
-            title['genre']  = read_info['DGENRE']
-            title['date']   = read_info['DYEAR']
-            title['title']  = read_info['TTITLE' + str(track)]
-            title['tracktotal'] = str(len(range(disc_id[1])) + 1)
-            title['ntracknumber'] = '0' * (len(title['tracktotal'] ) - len(str(track+1)) ) + str(track+1)
-            title['tracknumber'] = str(track+1)
-            for key, val in title.items():
-                title[key] =  unicode(str(val), "ISO-8859-1")
-            ConvertTrack(self.dev, self.conf, track+1, title)
-
-    def get_mb(self):
-        try:
-            import musicbrainz2.disc as mbdisc
-            import musicbrainz2.webservice as mbws
-        except ImportError, err:
-            warn('You need python-musicbrainz2 (or python-cddb) to convert cds. Please install it. Trying cddb.')
-            raise self.MBError, err
-
-        service = mbws.WebService()
-        query = mbws.Query(service)
-
-        # Read the disc in the drive
-        try:
-            disc = mbdisc.readDisc(self.dev)
-        except mbdisc.DiscError, err:
-            warn(err)
-            raise self.MBError
-
-        discId = disc.getId()
-        try:
-            myfilter = mbws.ReleaseFilter(discId=discId)
-            results = query.getReleases(myfilter)
-        except mbws.WebServiceError, err:
-            warn(err)
-            raise self.MBError
-
-        if len(results) == 0:
-            print "Disc is not yet in the MusicBrainz database."
-            print "Consider adding it via", mbdisc.getSubmissionUrl(disc)
-            raise self.MBError
-        try:
-            inc = mbws.ReleaseIncludes(artist=True, tracks=True, releaseEvents=True)
-            release = query.getReleaseById(results[0].release.getId(), inc)
-        except mbws.WebServiceError, err:
-            warn(err)
-            raise self.MBError
-
-        isSingleArtist = release.isSingleArtistRelease()
-
-        try:
-            # try to get the CDDB ID
-            import DiscID
-            cddb_id = '%08lx' % long(DiscID.disc_id(DiscID.open(self.dev))[0])
-        except:
-            cddb_id = False
-
-        trackn = 1
-        for track in release.tracks:
-            title           = {}
-            title['artist'] = isSingleArtist and release.artist.name or track.artist
-            if cddb_id:
-                title['discid'] = cddb_id
-            title['album']  = release.title
-            title['date']   = release.getEarliestReleaseDate()
-            title['musicbrainz_albumartistid'] = release.artist.id.split("/")[-1]
-            title['musicbrainz_albumid'] = release.id.split("/")[-1]
-            title['musicbrainz_discid'] = discId
-            title['musicbrainz_sortname'] = release.artist.sortName
-            title['musicbrainz_trackid'] = track.id.split("/")[-1]
-            title['title']  = track.title
-            title['tracktotal'] = str(len(release.tracks))
-            title['ntracknumber'] = "%02d" % trackn
-            title['tracknumber'] = str(trackn)
-            ConvertTrack(self.dev, self.conf, trackn, title)
-            trackn+=1
 
 class ConvertDirectory:
     '''
@@ -649,34 +520,29 @@ def show_license(*args, **kwargs):
 def main():
     conf = read_opts()
     conf_args, conf = conf[1], conf[0]
-    if conf.cdda:
-        discs = len(conf_args) and conf_args or ("/dev/cdrom",)
-        for disc in discs:
-            ConvertDisc(disc, conf)
-    else:
-        rdirs = {}
-        for path in conf_args:
-            if not os.path.exists(path):
-                fatal('Path %r does not exist' % path)
-            if os.path.isfile(path):
-                dirname = os.path.dirname(os.path.abspath(path))
-                try:
-                    rdirs[dirname].append(os.path.basename(path))
-                except KeyError:
-                    rdirs[dirname] = [os.path.basename(path)]
-            elif not os.path.isdir(path):
-                fatal('%r must be a directory or a file.' % path)
-            elif conf.recursive:
-                rdirs.update(return_dirs(os.path.abspath(path)))
-            else:
-                rdirs[os.path.abspath(path)] = os.listdir(path)
+    rdirs = {}
+    for path in conf_args:
+        if not os.path.exists(path):
+            fatal('Path %r does not exist' % path)
+        if os.path.isfile(path):
+            dirname = os.path.dirname(os.path.abspath(path))
+            try:
+                rdirs[dirname].append(os.path.basename(path))
+            except KeyError:
+                rdirs[dirname] = [os.path.basename(path)]
+        elif not os.path.isdir(path):
+            fatal('%r must be a directory or a file.' % path)
+        elif conf.recursive:
+            rdirs.update(return_dirs(os.path.abspath(path)))
+        else:
+            rdirs[os.path.abspath(path)] = os.listdir(path)
 
-        success = True
-        for directory, files in rdirs.items():
-            if not ConvertDirectory(conf, directory, files).convert():
-                success = False
-        if not success:
-            sys.exit(2)
+    success = True
+    for directory, files in rdirs.items():
+        if not ConvertDirectory(conf, directory, files).convert():
+            success = False
+    if not success:
+        sys.exit(2)
 
     sys.exit(0)
 
