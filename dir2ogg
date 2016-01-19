@@ -40,8 +40,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.12.0'
-__date__    = '2015-05-12'
+__version__ = '0.12'
+__date__    = '2016-01-19'
 
 FILTERS = {'mp3': ('*.mp3',),
            'mpc': ('*.mpc','*.mpp', '*.mp+'),
