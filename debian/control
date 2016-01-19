@@ -2,7 +2,7 @@ Source: dir2ogg
 Section: sound
 Priority: optional
 Maintainer: Julian Andres Klode <jak@debian.org>
-Standards-Version: 3.8.2
+Standards-Version: 3.9.6
 Build-Depends: debhelper (>= 5)
 Homepage: http://jak-linux.org/projects/dir2ogg/
 VCS-Bzr: http://bazaar.launchpad.net/~juliank/dir2ogg/main
