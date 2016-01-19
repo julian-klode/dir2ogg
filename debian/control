@@ -5,8 +5,8 @@ Maintainer: Julian Andres Klode <jak@debian.org>
 Standards-Version: 3.9.6
 Build-Depends: debhelper (>= 9)
 Homepage: http://jak-linux.org/projects/dir2ogg/
-VCS-Bzr: http://bazaar.launchpad.net/~juliank/dir2ogg/main
-VCS-Browser: http://codebrowse.launchpad.net/~juliank/dir2ogg/main/changes
+VCS-Git: https://github.com/julian-klode/dir2ogg.git
+VCS-Browser: https://github.com/julian-klode/dir2ogg
 
 Package: dir2ogg
 Architecture: all
