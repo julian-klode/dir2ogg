@@ -38,8 +38,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.1'
-__date__    = '2007-12-15'
+__version__ = '0.11.2'
+__date__    = '2008-02-17'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
@@ -68,14 +68,12 @@ def mmatch(names, patterns, rbool=True):
                     results.append(name)
     if rbool:
         return bool(results)
-    else: 
+    else:
         return results
 
 def read_opts():
     if not '--version' in sys.argv:
         show_banner()
-    if  '-f' in sys.argv:
-        fatal('-f is deprecated and its behavior will change in 0.12. Please use -W in future')
     if len(sys.argv[1:]) == 0:
         fatal('No arguments specified, see --help for usage.')
     parser = OptionParser(usage='%prog [options] [arguments]', version='%prog ' + __version__)
@@ -87,7 +85,7 @@ def read_opts():
     parser.add_option('-t', '--smart-mp3', action='store_true', help='try to use similar quality as original mp3 file (overwrites -q)')
     parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
     parser.add_option('-a', '--convert-all', action='store_true', help="convert all supported formats")
-    parser.add_option('--convert-flac', action='store_true', help="convert flac files (use with '-d')")        
+    parser.add_option('-f', '--convert-flac', action='store_true', help="convert flac files (use with '-d')")
     parser.add_option('-m', '--convert-m4a', action='store_true', help="convert m4a files (use with '-d')")
     parser.add_option('-w', '--convert-wav', action='store_true', help="convert wav files (use with '-d')")
     parser.add_option('-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
@@ -176,7 +174,9 @@ class Id3TagHandler:
             key = key.lower()
             key = convert and (key in convert and convert[key] or key) or key
             if not key in self.accept:
-               continue
+                continue
+            if not convert: # Hack for FLAC, which uses Vorbis tags
+                pass
             elif hasattr(val, 'text'):
                 val = val.text
             elif isinstance(val, list):
@@ -552,7 +552,7 @@ def show_banner():
     print 'dir2ogg %s (%s), converts audio files into ogg vorbis.\n' % (__version__, __date__)
 
 def show_license(*args, **kwargs):
-    print 'Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>'
+    print 'Copyright (C) 2007-2008 Julian Andres Klode <jak@jak-linux.org>'
     print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n'
     print 'This program is distributed in the hope that it will be useful,'
     print 'but WITHOUT ANY WARRANTY; without even the implied warranty of'
