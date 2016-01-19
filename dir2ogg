@@ -165,9 +165,16 @@ class Id3TagHandler:
     def __init__(self, song):
         self.song = song
         
-    def grab_common(self, handler, convert=None):
+    def grab_common(self, handler, convert=None, error=None):
         '''Common grabber, starts the handler and applies the tags to self.tags'''
-        mydict  = handler(self.song)
+        try:
+            mydict  = handler(self.song)
+        except error, msg:
+            import warnings,traceback;
+            warn('Mutagen failed on %s, no tags available' % self.song)
+            traceback.print_exc(0)
+            print >> sys.stderr
+            return
         if convert:
             convert = dict([(k.lower(), v.lower()) for k, v in convert.items()]) # Fix convert
         for key, val in mydict.items():
@@ -220,10 +227,10 @@ class Id3TagHandler:
                    '\xa9gen': 'genre', '\xa9grp': 'grouping', '\xa9lyr': 'lyrics',
                    '\xa9nam': 'title', '\xa9too': 'encodedby','\xa9wrt': 'composer'}
         try:
-            from mutagen.mp4 import MP4
+            from mutagen.mp4 import MP4, error
         except ImportError:
-            from mutagen.m4a import M4A as MP4
-        self.grab_common(MP4, convert)
+            from mutagen.m4a import M4A as MP4, error
+        self.grab_common(MP4, convert, error)
 
     def grab_wma_tags(self):
         '''Import ASF tags handler, set convert and call commonGrab'''
@@ -264,17 +271,17 @@ class Id3TagHandler:
                    'WM/Writer': 'lyricist',
                    'WM/Year': 'date',
                   }
-        from mutagen.asf import ASF
-        self.grab_common(ASF, convert)
+        from mutagen.asf import ASF, error
+        self.grab_common(ASF, convert, error)
 
     def grab_flac_tags(self):
         '''Import MP3 tags handler, and call commonGrab'''
-        from mutagen.flac import FLAC
-        self.grab_common(FLAC)
+        from mutagen.flac import FLAC, error
+        self.grab_common(FLAC, error)
 
     def grab_mp3_tags(self):
         '''Import MP3 tags handler, and call commonGrab'''
-        from mutagen.id3 import ID3
+        from mutagen.id3 import ID3, error
         convert = {'TPE1': 'artist', 'TPE2': 'albumartist', 'TPE3': 'conductor', 'TPE4': 'remixer',
                    'TCOM': 'composer', 'TCON': 'genre', 'TALB': 'album', 'TIT1': 'grouping',
                    'TIT2': 'title', 'TIT3': 'subtitle', 'TSST': 'discsubtitle', 'TEXT': 'lyricist',
@@ -282,7 +289,7 @@ class Id3TagHandler:
                    'TMED': 'media', 'TBPM': 'bpm', 'WOAR': 'website', 'TSRC': 'isrc', 
                    'TENC': 'encodedby', 'TCOP': 'copyright', 'TSOA': 'albumsort', 
                    'TSOP': 'artistsort', 'TSOT': 'titlesort','TPUB': 'label'}
-        self.grab_common(ID3, convert)
+        self.grab_common(ID3, convert, error)
 
     def list_if_verbose(self):
         info('Meta-tags I will write:')
