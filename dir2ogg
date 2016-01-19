@@ -34,17 +34,21 @@ Scratch tags using the filename will be written for wav files (and mp3s with no 
 import sys
 import os, os.path
 import re
+import warnings
 from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.7'
-__date__    = '2009-05-03'
+__version__ = '0.11.8'
+__date__    = '2009-08-04'
 
 FILTERS = {'mp3': ('*.mp3',),
+           'mpc': ('*.mpc','*.mpp', '*.mp+'),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
            'wma': ('*.asf', '*.wma', '*.wmf'),
            'flac': ('*.flac',),
+           'ape': ('*.ape',),
+           'wv': ('*.wv','*.wvc'),
            'wav': ('*.wav', ),
            }
 
@@ -78,7 +82,7 @@ def read_opts():
         fatal('No arguments specified, see --help for usage.')
     parser = OptionParser(usage='%prog [options] [arguments]', version='%prog ' + __version__)
     parser.add_option('-l', '--license', action='callback', callback=show_license, help='display license informations')
-    parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments')
+    parser.add_option('-d', '--directory', action='store_true', help='convert files in all directories specified as arguments (not needed anymore)')
     parser.add_option('-r', '--recursive', action='store_true', help='convert files in all subdirectories of all directories specified as arguments')
     parser.add_option('-c', '--cdda', action='store_true', help="convert audio cd in all devices specified as arguments (or default: /dev/cdrom) [EXPERIMENTAL]")
     parser.add_option('-q', '--quality', metavar='N', default=3.0, type='float', help='quality. N is a number from 1-10 (default %default)')
@@ -86,14 +90,18 @@ def read_opts():
     parser.add_option('-T', '--smart-mp3-correction', metavar='N', default=0.0, type='float', help='decrease detected quality (implies -t)')
     parser.add_option('-n', '--no-mp3', dest='convert_mp3', action='store_false', default=True, help="don't convert mp3s (use with '-d' or '-r')")
     parser.add_option('-a', '--convert-all', action='store_true', help="convert all supported formats")
-    parser.add_option('-f', '--convert-flac', action='store_true', help="convert flac files (use with '-d')")
-    parser.add_option('-m', '--convert-m4a', action='store_true', help="convert m4a files (use with '-d')")
-    parser.add_option('-w', '--convert-wav', action='store_true', help="convert wav files (use with '-d')")
-    parser.add_option('-W', '--convert-wma', action='store_true', help="convert wma files (use with '-d').")
+    parser.add_option('-A', '--convert-ape', action='store_true', help="convert all APE files found in directories.")
+    parser.add_option('-f', '--convert-flac', action='store_true', help="convert all FLAC files found in directories")
+    parser.add_option('-m', '--convert-m4a', action='store_true', help="convert all M4A files found in directories")
+    parser.add_option('-M', '--convert-mpc', action='store_true', help="convert all MPC files found in directories")
+    parser.add_option('-w', '--convert-wav', action='store_true', help="convert all WAV files found in directories")
+    parser.add_option('-W', '--convert-wma', action='store_true', help="convert all WMA files found in directories")
+    parser.add_option('-V', '--convert-wv', action='store_true', help="convert all WV files found in directories")
     parser.add_option('--delete-input', action='store_true', help='delete input files')
     parser.add_option('-p', '--preserve-wav', action='store_true', help='keep the wav files (also includes -P)')
     parser.add_option('-P', '--no-pipe', action='store_true', help='Do not use pipes, use temporary wav files')
     parser.add_option('-v', '--verbose', action='store_true', help='verbose output')
+    parser.add_option('-Q', '--quiet', action='store_true', help='do not display progress report.')
 
     # Setup decoders
     commands = {'mp3': ('mpg123', 'mpg321', 'lame',  'mplayer'),
@@ -101,6 +109,9 @@ def read_opts():
         'm4a': ('faad', 'mplayer'),
         'flac': ('flac', 'ogg123', 'mplayer'),
         'cd':  ('cdparanoia', 'icedax','cdda2wav', 'mplayer'),
+        'ape': ('mac', 'mplayer'),
+        'wv':  ('wvunpack', 'mplayer'),
+        'mpc': ('mpcdec', 'mplayer'),
         }
 
     for ext, dec in commands.items():
@@ -132,15 +143,15 @@ def read_opts():
     return options, args
 
 def info(msg):
-    print 'Information: %s' % msg
+    print 'INFO: %s' % msg
 
 def warn(msg):
     '''print errors to the screen (red)'''
-    print >> sys.stderr, "Warning: %s" % msg
+    print >> sys.stderr, "WARNING: %s" % msg
 
 def fatal(msg):
     '''Fatal error (error + exit)'''
-    print >> sys.stderr, "Error: %s" % msg
+    print >> sys.stderr, "ERROR: %s" % msg
     sys.exit(1)
 
 def return_dirs(root):
@@ -207,6 +218,15 @@ class Id3TagHandler:
 
             self.tags[key] = val
 
+    def grab_ape_tags(self):
+        '''Convert APE tags.'''
+        from mutagen.apev2 import APEv2, error
+        convert = {'year': 'date'}
+        self.grab_common(APEv2, convert, error)
+
+    grab_mpc_tags = grab_ape_tags # Musepack files use APEv2.
+    grab_wv_tags = grab_ape_tags # WavPack files use APEv2.
+        
     def grab_m4a_tags(self):
         '''Import MP4 tags handler, set convert and call commonGrab'''
         convert = {'----:com.apple.iTunes:ASIN': 'asin',
@@ -367,13 +387,16 @@ class Convert(Id3TagHandler):
         else:
             outfile = outfile1 = self.songwav
             use_pipe = 0
-        decoder = {'mpg123':  ['mpg123', '-w', outfile1, self.song],
-                   'mpg321':  ['mpg321', '-w', outfile, self.song],
-                   'faad':    ['faad',  '-o' , outfile1, self.song],
-                   'ogg123':  ['ogg123', '-dwav', '-f' , outfile, self.song],
-                   'flac':    ['flac', '-o', outfile, '-d', self.song],
+        decoder = {'mpg123':  ['mpg123', '-q', '-w', outfile1, self.song],
+                   'mpg321':  ['mpg321', '-q', '-w', outfile, self.song],
+                   'faad':    ['faad',  '-q', '-o' , outfile1, self.song],
+                   'ogg123':  ['ogg123', '-q', '-dwav', '-f' , outfile, self.song],
+                   'flac':    ['flac', '-s', '-o', outfile, '-d', self.song],
                    'lame':    ['lame', '--quiet', '--decode', self.song, outfile],
-                   'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + tempwav, self.song],
+                   'mac':     ['mac', self.song, outfile, '-d'],
+                   'mpcdec':  ['mpcdec', self.song, outfile],
+                   'mplayer': ['mplayer', '-really-quiet', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + tempwav, self.song],
+                   'wvunpack': ['wvunpack', '-q', self.song, '-o', outfile],
                    'alac-decoder': ['alac-decoder',  self.song],
                    'cd-cdparanoia': ['cdparanoia', '-Z', '-q',  '-w', '-d', self.device, str(self.track), outfile],
                    'cd-icedax':      ['icedax', '-H', '-t', str(self.track), '-D',self.device],
@@ -396,33 +419,36 @@ class Convert(Id3TagHandler):
 
     def convert(self):
         ''' Convert wav -> ogg.'''
+        info('Converting "%s" (using %s as decoder)...' % (self.song, self.decoder))
         if self.songwav == self.song:
             success = True
             dec = None
         else:
             success, dec = self.decode()
         if not success:
-            warn('Decoding of "%s" failed.' % self.song)
+            warn('Decoding of "%s" with %s failed.' % (self.song, self.decoder))
             return
 
 
         if dec and self.decoder == 'mpg123':
             import mutagen
-            opts=['-R', str(mutagen.File(self.song).info.sample_rate)]
+            opts=['-r', '-R', str(mutagen.File(self.song).info.sample_rate)]
         else:
             opts=[]
+        if self.conf.quiet:
+            opts.append("--quiet")
         if dec:
             enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), '-'] + opts, stdin=dec.stdout)
             enc.communicate()
             dec.wait()
             if dec.returncode < 0:
-                warn('Decoding of "%s" failed.' % self.song)
+                warn('Decoding of "%s" with %s failed.' % (self.song, self.decoder))
                 return False
             elif enc.returncode < 0:
                 warn('Encoding of "%s" failed.' % self.song)
                 return False
         else:
-            enc = call(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), self.songwav])
+            enc = call(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), self.songwav] + opts)
             if enc != 0:
                 warn('Encoding of "%s" failed.' % self.songwav)
                 return False
@@ -583,7 +609,7 @@ class ConvertDirectory:
             fatal('Directory: "%s" not found' % directory)
 
         self.directory = directory = os.path.normpath(directory) + os.path.sep
-        self.songs = mmatch(files, conf.filters, False)
+        self.songs = sorted(mmatch(files, conf.filters, False))
 
         if conf.verbose:
             self.print_if_verbose()
@@ -602,7 +628,7 @@ def show_banner():
     print 'dir2ogg %s (%s), converts audio files into ogg vorbis.\n' % (__version__, __date__)
 
 def show_license(*args, **kwargs):
-    print 'Copyright (C) 2007-2008 Julian Andres Klode <jak@jak-linux.org>'
+    print 'Copyright (C) 2007-2009 Julian Andres Klode <jak@jak-linux.org>'
     print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n'
     print 'This program is distributed in the hope that it will be useful,'
     print 'but WITHOUT ANY WARRANTY; without even the implied warranty of'
@@ -618,25 +644,30 @@ def main():
         discs = len(conf_args) and conf_args or ("/dev/cdrom",)
         for disc in discs:
             ConvertDisc(disc, conf)
-    elif conf.directory or conf.recursive:
+    else:
         rdirs = {}
         for path in conf_args:
-            if not os.path.isdir(path):
-                fatal('Path: %s does not exists' % path)
+            if not os.path.exists(path):
+                fatal('Path %r does not exists' % path)
+            if os.path.isfile(path):
+                dirname = os.path.dirname(os.path.abspath(path))
+                try:
+                    rdirs[dirname].append(os.path.basename(path))
+                except KeyError:
+                    rdirs[dirname] = [os.path.basename(path)]
+            elif not os.path.isdir(path):
+                fatal('%r must be a directory or a file.' % path)
             elif conf.recursive:
-                rdirs.update(return_dirs(path))
-            elif conf.directory:
-                rdirs.update({path: os.listdir(path)})
+                rdirs.update(return_dirs(os.path.abspath(path)))
+            else:
+                rdirs[os.path.abspath(path)] = os.listdir(path)
         for directory, files in rdirs.items():
             ConvertDirectory(conf, directory, files)
-    else:
-        for path in conf_args:
-            if not os.path.isfile(path):
-                fatal('Path: %s does not exists' % path)
-        for filename in conf_args:
-            Convert(filename, conf)
 
     sys.exit(0)
 
 if __name__ == '__main__':
+    # mutagen._util sometimes has problems when calling struct.pack().
+    warnings.filterwarnings("ignore", category=DeprecationWarning,
+                            module="mutagen.*", message='.*<= number <=.*')
     main()
