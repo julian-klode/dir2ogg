@@ -1,3 +1,24 @@
+dir2ogg (0.12-1) unstable; urgency=medium
+
+  * New upstream release
+    - dir2ogg: Fix a minor typo (Closes: #742677)
+    - Exit with exit code 2 if conversion of a file failed (Closes: #713023)
+    - Drop support for ripping CDs
+    - Do not throw an exception if mutagen does not recognize MP3 (LP: #777904)
+    - dir2ogg: Localize quality for oggenc (LP: #691047)
+    - Play nice with all/most versions of mpg123. (Closes: #679813)
+  * debian: control: Drop CD ripping dependencies and description
+    (Closes: #786360)
+  * Bring the packaging up-to-date:
+    - source/format: Use 3.0 (quilt)
+    - control: Upgrade Standards-Version to 3.9.6
+    - Switch to debhelper 9 and dh(1)
+    - control: Add ${misc:Depends} to Depends
+    - copyright: Update format and years and email addresses
+  * debian/control: Switch Vcs to github
+
+ -- Julian Andres Klode <jak@debian.org>  Tue, 19 Jan 2016 12:00:43 +0100
+
 dir2ogg (0.11.8-1) unstable; urgency=low
 
   * New upstream release:
