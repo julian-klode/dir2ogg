@@ -25,7 +25,7 @@ Requirements:
  - MP3 Conversion: mpg123, mpg321, lame or mplayer
  - FLAC Conversion: no extra software required (ogg123 from vorbis-tools)
  - CD Ripping: cdparanoia, icedax or mplayer
- 
+
 Usage:
  Read the manpage for detailed instructions: "man dir2ogg", or type "dir2ogg
  --help" for brief usage details. The script is extremely simple, so you
@@ -36,8 +36,12 @@ Usage:
  as arguments, not filenames and directories
 
  If you wish to convert m4a, wma and/or wav files using -d then the -m, -f and -w
- flags must be used respectively (FLAC: --convert-flac). Wav files are deleted 
+ flags must be used respectively (FLAC: --convert-flac). Wav files are deleted
  by default, use -p to keep wav files after conversion.
+
+ There is also support for CD ripping using the '-c' flag. This functionality
+ is not well supported, and it may be better to use a different program for
+ such a task.
 
 Bugs:
  See the manpage. Please report bugs at https://bugs.launchpad.net/dir2ogg

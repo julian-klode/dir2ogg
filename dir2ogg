@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-# Copyright (C) 2007 Julian Andres Klode <jak@jak-linux.org>
+# Copyright (C) 2007-2009 Julian Andres Klode <jak@jak-linux.org>
 # Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -38,8 +38,8 @@ from fnmatch import _cache, translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
-__version__ = '0.11.6'
-__date__    = '2008-07-14'
+__version__ = '0.11.7'
+__date__    = '2009-05-03'
 
 FILTERS = {'mp3': ('*.mp3',),
            'm4a': ('*.aac', '*.m4a', '*.mp4'),
@@ -60,7 +60,7 @@ def mmatch(names, patterns, rbool=True):
         if not pat in _cache:
             _cache[pat] = re.compile(translate(pat))
         match = _cache[pat].match
-        for name in names:        
+        for name in names:
             if match(name.lower()):
                 if rbool:
                     return True
@@ -94,7 +94,7 @@ def read_opts():
     parser.add_option('-p', '--preserve-wav', action='store_true', help='keep the wav files (also includes -P)')
     parser.add_option('-P', '--no-pipe', action='store_true', help='Do not use pipes, use temporary wav files')
     parser.add_option('-v', '--verbose', action='store_true', help='verbose output')
-    
+
     # Setup decoders
     commands = {'mp3': ('mpg123', 'mpg321', 'lame',  'mplayer'),
         'wma': ('mplayer',),
@@ -152,7 +152,7 @@ def return_dirs(root):
 
 class Id3TagHandler:
     '''Class for handling meta-tags. (Needs mutagen)'''
-    accept = ['album', 'album_subtitle', 'albumartist', 'albumartistsort', 
+    accept = ['album', 'album_subtitle', 'albumartist', 'albumartistsort',
               'albumsort', 'artist', 'artistsort', 'asin', 'bpm', 'comment',
               'compilation', 'composer', 'composersort', 'conductor', 'copyright',
               'date', 'discid', 'discnumber', 'encodedby', 'engineer', 'gapless',
@@ -162,10 +162,11 @@ class Id3TagHandler:
               'musicbrainz_trmid', 'musicip_puid', 'podcast', 'podcasturl',
               'releasecountry', 'musicbrainz_albumstatus', 'musicbrainz_albumtype', 'remixer', 'show',
               'showsort', 'subtitle', 'title', 'titlesort', 'tracknumber', 'tracktotal']
-    tags   = {}
+
     def __init__(self, song):
         self.song = song
-        
+        self.tags = {}
+
     def grab_common(self, handler, convert=None, error=None):
         '''Common grabber, starts the handler and applies the tags to self.tags'''
         try:
@@ -287,9 +288,10 @@ class Id3TagHandler:
                    'TCOM': 'composer', 'TCON': 'genre', 'TALB': 'album', 'TIT1': 'grouping',
                    'TIT2': 'title', 'TIT3': 'subtitle', 'TSST': 'discsubtitle', 'TEXT': 'lyricist',
                    'TCMP': 'compilation', 'TDRC': 'date', 'COMM': 'comment', 'TMOO': 'mood',
-                   'TMED': 'media', 'TBPM': 'bpm', 'WOAR': 'website', 'TSRC': 'isrc', 
-                   'TENC': 'encodedby', 'TCOP': 'copyright', 'TSOA': 'albumsort', 
-                   'TSOP': 'artistsort', 'TSOT': 'titlesort','TPUB': 'label'}
+                   'TMED': 'media', 'TBPM': 'bpm', 'WOAR': 'website', 'TSRC': 'isrc',
+                   'TENC': 'encodedby', 'TCOP': 'copyright', 'TSOA': 'albumsort',
+                   'TSOP': 'artistsort', 'TSOT': 'titlesort','TPUB': 'label',
+                   'TRCK': 'tracknumber'}
         self.grab_common(ID3, convert, error)
 
     def list_if_verbose(self):
@@ -336,13 +338,13 @@ class Convert(Id3TagHandler):
         # Table of quality = relation between mp3 bitrate and vorbis quality. Source: wikipedia
         # quality_table = {45:-1, 64:0, 80:1, 96:2, 112:3, 128:4, 160:5, 192:6, 224:7, 256:8, 320:9, 500:10 }
         # log(0.015*bitrate, 1.19) is logaritmic regression of table above. Useful for mp3s in VBR :-).
- 
+
         try:
             from mutagen.mp3 import MP3, HeaderNotFoundError
         except ImportError:
             warn('(smartmp3) You dont have mutagen installed. Bitrate detection failed. Using default quality %.02f' % self.conf.quality)
             return
-        try:    
+        try:
             mp3info = MP3(self.song)
             bitrate = mp3info.info.bitrate
         except HeaderNotFoundError:
@@ -357,11 +359,12 @@ class Convert(Id3TagHandler):
         info("(smartmp3) Assumed vorbis quality: %.02f" % self.conf.quality)
 
     def decode(self):
+        # Used for mplayer
+        tempwav = 'dir2ogg-%s-temp.wav' % os.getpid()
         if self.decoder not in ('mplayer',) and not self.conf.no_pipe and not self.conf.preserve_wav:
             outfile, outfile1 = '-', '/dev/stdout'
             use_pipe = 1
         else:
-            if 'mplayer' in self.decoder : self.songwav, self.conf.preserve_wav = 'temp.wav', False
             outfile = outfile1 = self.songwav
             use_pipe = 0
         decoder = {'mpg123':  ['mpg123', '-w', outfile1, self.song],
@@ -370,7 +373,7 @@ class Convert(Id3TagHandler):
                    'ogg123':  ['ogg123', '-dwav', '-f' , outfile, self.song],
                    'flac':    ['flac', '-o', outfile, '-d', self.song],
                    'lame':    ['lame', '--quiet', '--decode', self.song, outfile],
-                   'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=temp.wav', self.song],
+                   'mplayer': ['mplayer', '-vo', 'null', '-vc' ,'dummy', '-af', 'resample=44100', '-ao', 'pcm:file=' + tempwav, self.song],
                    'alac-decoder': ['alac-decoder',  self.song],
                    'cd-cdparanoia': ['cdparanoia', '-Z', '-q',  '-w', '-d', self.device, str(self.track), outfile],
                    'cd-icedax':      ['icedax', '-H', '-t', str(self.track), '-D',self.device],
@@ -382,6 +385,10 @@ class Convert(Id3TagHandler):
             decoder['cd-cdparanoia'].remove('-q')
             decoder['lame'].remove('--quiet')
             retcode = call(decoder[self.decoder])
+            if self.decoder == 'mplayer':
+                # Move the file for mplayer (which uses tempwav), so it works
+                # for --preserve-wav.
+                os.rename(tempwav, self.songwav)
             if retcode != 0:
                 return (False, None)
             else:
@@ -398,8 +405,14 @@ class Convert(Id3TagHandler):
             warn('Decoding of "%s" failed.' % self.song)
             return
 
+
+        if dec and self.decoder == 'mpg123':
+            import mutagen
+            opts=['-R', str(mutagen.File(self.song).info.sample_rate)]
+        else:
+            opts=[]
         if dec:
-            enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), '-'], stdin=dec.stdout)
+            enc = Popen(['oggenc', '-o', self.songogg, '-q', str(self.conf.quality).replace('.', ','), '-'] + opts, stdin=dec.stdout)
             enc.communicate()
             dec.wait()
             if dec.returncode < 0:
@@ -450,6 +463,8 @@ class ConvertDisc:
     '''Wrapper around ConvertTrack to Convert complete cds
     Currently uses MusicBrainz, but a CDDB fallback will be added, too.'''
     def __init__(self, dev, conf):
+        warn("Converting CDs is not well supported, please use another "
+             "solution.")
         self.dev, self.conf = dev, conf
         try:
             self.get_mb()
@@ -480,20 +495,20 @@ class ConvertDisc:
             title['artist'], title['album'] = (track.strip() for track in query_info['title'].split("/"))
             title['genre']  = read_info['DGENRE']
             title['date']   = read_info['DYEAR']
-            title['title']  = read_info['TTITLE' + str(track)]          
+            title['title']  = read_info['TTITLE' + str(track)]
             title['tracktotal'] = str(len(range(disc_id[1])) + 1)
             title['ntracknumber'] = '0' * (len(title['tracktotal'] ) - len(str(track+1)) ) + str(track+1)
             title['tracknumber'] = str(track+1)
             for key, val in title.items():
                 title[key] =  unicode(str(val), "ISO-8859-1")
             ConvertTrack(self.dev, self.conf, track+1, title)
-            
+
     def get_mb(self):
         try:
             import musicbrainz2.disc as mbdisc
             import musicbrainz2.webservice as mbws
         except ImportError, err:
-            warn('You need python-musicbrainz2 to convert cds. Please install it. Trying cddb.')
+            warn('You need python-musicbrainz2 (or python-cddb) to convert cds. Please install it. Trying cddb.')
             raise self.MBError, err
 
         service = mbws.WebService()
@@ -524,9 +539,9 @@ class ConvertDisc:
         except mbws.WebServiceError, err:
             warn(err)
             raise self.MBError
-            
+
         isSingleArtist = release.isSingleArtistRelease()
-        
+
         try:
             # try to get the CDDB ID
             import DiscID
@@ -557,7 +572,7 @@ class ConvertDisc:
 class ConvertDirectory:
     '''
     This class is just a wrapper for Convert.
-    
+
     Grab the songs to convert, then feed them one
     by one to the Convert class.
     '''
@@ -613,14 +628,14 @@ def main():
             elif conf.directory:
                 rdirs.update({path: os.listdir(path)})
         for directory, files in rdirs.items():
-            ConvertDirectory(conf, directory, files) 
+            ConvertDirectory(conf, directory, files)
     else:
         for path in conf_args:
             if not os.path.isfile(path):
                 fatal('Path: %s does not exists' % path)
         for filename in conf_args:
             Convert(filename, conf)
-            
+
     sys.exit(0)
 
 if __name__ == '__main__':
