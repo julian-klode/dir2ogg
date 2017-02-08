@@ -24,7 +24,6 @@ Requirements:
  - WMA Conversion: mplayer
  - MP3 Conversion: mpg123, mpg321, lame or mplayer
  - FLAC Conversion: no extra software required (ogg123 from vorbis-tools)
- - CD Ripping: cdparanoia, icedax or mplayer
 
 Usage:
  Read the manpage for detailed instructions: "man dir2ogg", or type "dir2ogg
@@ -39,15 +38,11 @@ Usage:
  flags must be used respectively (FLAC: --convert-flac). Wav files are deleted
  by default, use -p to keep wav files after conversion.
 
- There is also support for CD ripping using the '-c' flag. This functionality
- is not well supported, and it may be better to use a different program for
- such a task.
-
 Bugs:
- See the manpage. Please report bugs at https://bugs.launchpad.net/dir2ogg
+ See the manpage. Please report bugs https://github.com/julian-klode/dir2ogg
 
 License and Disclaimer:
- Copyright (c) 2007-2008 Julian Andres Klode
+ Copyright (c) 2007-2017 Julian Andres Klode
  Copyright (c) 2003-2006 Darren Kirby
 
  This program is free software; you can redistribute it and/or modify
@@ -74,4 +69,4 @@ Authors:
   Marek Palatinus <marek@palatinus.cz>
 
 Date:
- February 17, 2008
+ February 08, 2017
