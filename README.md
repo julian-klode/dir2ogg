@@ -6,7 +6,6 @@ It can preserve tags found in the input file where
 supported. It was inspired by the perl script mp32ogg,
 but supports much more features these days.
 
-
 Installation
 -------------
  (Not so) new in dir2ogg is the install.sh script, which automates installation of
@@ -21,7 +20,7 @@ Installation
 
 Requirements
 -------------
- - Tag preservation: mutagen (http://www.sacredchao.net/quodlibet/wiki/Development/Mutagen)
+ - Tag preservation: mutagen (https://mutagen.readthedocs.io/en/latest/)
  - M4A Conversion: faad or mplayer (ALAC: alac-decoder)
  - WMA Conversion: mplayer
  - MP3 Conversion: mpg123, mpg321, lame or mplayer
