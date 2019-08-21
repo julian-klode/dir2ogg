@@ -1,0 +1,9 @@
+dist: bionic
+language: python
+install:
+  - pip install pre-commit
+jobs:
+  include:
+    - name: pre-commit
+      script:
+      - pre-commit run -a
