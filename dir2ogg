@@ -68,7 +68,7 @@ def mmatch(names, patterns, rbool=True):
         patterns = [patterns]
     for pat in patterns:
         pat = pat.lower()
-        if not pat in _cache:
+        if pat not in _cache:
             _cache[pat] = re.compile(translate(pat))
         match = _cache[pat].match
         for name in names:
@@ -84,7 +84,7 @@ def mmatch(names, patterns, rbool=True):
 
 
 def read_opts():
-    if not "--version" in sys.argv:
+    if "--version" not in sys.argv:
         show_banner()
     if len(sys.argv[1:]) == 0:
         fatal("No arguments specified, see --help for usage.")
@@ -275,7 +275,7 @@ def fatal(msg):
 def return_dirs(root):
     mydirs = {}
     for pdir, dirs, files in os.walk(root):
-        if not pdir in mydirs:
+        if pdir not in mydirs:
             mydirs[pdir] = files
     return mydirs
 
@@ -355,7 +355,7 @@ class Id3TagHandler:
         for key, val in mydict.items():
             key = key.lower()
             key = convert and (key in convert and convert[key] or key) or key
-            if not key in self.accept:
+            if key not in self.accept:
                 continue
             if not convert:  # Hack for FLAC, which uses Vorbis tags
                 pass
