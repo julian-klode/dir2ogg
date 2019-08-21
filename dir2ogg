@@ -116,7 +116,7 @@ def read_opts():
         'mpc': ('mpcdec', 'mplayer'),
         }
 
-    for ext, dec in list(commands.items()):
+    for ext, dec in commands.items():
         default, choices = None, []
         for command in dec:
             in_path = [prefix for prefix in os.environ['PATH'].split(os.pathsep) if os.path.exists(os.path.join(prefix, command))]
@@ -129,7 +129,7 @@ def read_opts():
     options, args = parser.parse_args()
 
     options.filters    = []
-    for ext, pat in list(FILTERS.items()):
+    for ext, pat in FILTERS.items():
         # Activate Encoders for files on the commandline
         if options.convert_all or mmatch(args, pat):
             setattr(options, 'convert_' + ext, True)
@@ -190,8 +190,8 @@ class Id3TagHandler:
             print(file=sys.stderr)
             return
         if convert:
-            convert = dict([(k.lower(), v.lower()) for k, v in list(convert.items())]) # Fix convert
-        for key, val in list(mydict.items()):
+            convert = dict([(k.lower(), v.lower()) for k, v in convert.items()]) # Fix convert
+        for key, val in mydict.items():
             key = key.lower()
             key = convert and (key in convert and convert[key] or key) or key
             if not key in self.accept:
@@ -317,7 +317,7 @@ class Id3TagHandler:
 
     def list_if_verbose(self):
         info('Meta-tags I will write:')
-        for key, val in list(self.tags.items()):
+        for key, val in self.tags.items():
             if type(val) == list:
                 info(key + ': ' + ','.join(val))
             else:
@@ -409,7 +409,7 @@ class Convert(Id3TagHandler):
         # (smartmp3) I have to remember default quality for next files
         original_quality = self.conf.quality
         try:
-            for ext, pat in list(FILTERS.items()):
+            for ext, pat in FILTERS.items():
                 if mmatch(self.song, pat) and ext != 'wav':
                     self.decoder = getattr(self.conf, ext + '_decoder')
                     getattr(self, 'grab_%s_tags' % ext)()
@@ -553,7 +553,7 @@ def main():
             rdirs[os.path.abspath(path)] = os.listdir(path)
 
     success = True
-    for directory, files in list(rdirs.items()):
+    for directory, files in rdirs.items():
         if not ConvertDirectory(conf, directory, files).convert():
             success = False
     if not success:
