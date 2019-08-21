@@ -32,13 +32,14 @@ Scratch tags using the filename will be written for wav files (and mp3s with no 
 """
 
 import locale
-import sys
-import os, os.path
+import os
+import os.path
 import re
+import sys
 import warnings
 from fnmatch import translate
 from optparse import OptionParser
-from subprocess import Popen, call, PIPE
+from subprocess import PIPE, Popen, call
 
 __version__ = "0.12"
 __date__ = "2016-01-19"
@@ -230,7 +231,7 @@ def read_opts():
             metavar=default,
             default=default,
             choices=choices,
-            help="decoder for %s files (choices: %s)" % (ext, ", ".join(choices)),
+            help="decoder for {} files (choices: {})".format(ext, ", ".join(choices)),
         )
 
     # End of decoder options
@@ -350,9 +351,7 @@ class Id3TagHandler:
             print(file=sys.stderr)
             return
         if convert:
-            convert = dict(
-                [(k.lower(), v.lower()) for k, v in convert.items()]
-            )  # Fix convert
+            convert = {k.lower(): v.lower() for k, v in convert.items()}  # Fix convert
         for key, val in mydict.items():
             key = key.lower()
             key = convert and (key in convert and convert[key] or key) or key
@@ -662,14 +661,14 @@ class Convert(Id3TagHandler):
 
     def convert_nosmart(self):
         """ Convert wav -> ogg."""
-        info('Converting "%s" (using %s as decoder)...' % (self.song, self.decoder))
+        info(f'Converting "{self.song}" (using {self.decoder} as decoder)...')
         if self.songwav == self.song:
             success = True
             dec = None
         else:
             success, dec = self.decode()
         if not success:
-            warn('Decoding of "%s" with %s failed.' % (self.song, self.decoder))
+            warn(f'Decoding of "{self.song}" with {self.decoder} failed.')
             return False
 
         if dec and self.decoder == "mpg123":
@@ -705,7 +704,7 @@ class Convert(Id3TagHandler):
             enc.communicate()
             dec.wait()
             if dec.returncode < 0:
-                warn('Decoding of "%s" with %s failed.' % (self.song, self.decoder))
+                warn(f'Decoding of "{self.song}" with {self.decoder} failed.')
                 return False
             elif enc.returncode < 0:
                 warn('Encoding of "%s" failed.' % self.song)
