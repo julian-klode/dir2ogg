@@ -10,7 +10,7 @@ VCS-Browser: https://github.com/julian-klode/dir2ogg
 
 Package: dir2ogg
 Architecture: all
-Depends: python (>= 2.4), ${misc:Depends}, python-mutagen, vorbis-tools, mpg123 | mpg321
+Depends: python3, ${misc:Depends}, python3-mutagen, vorbis-tools, mpg123 | mpg321
 Recommends: faad, wavpack, ${distro:Recommends}
 Suggests: ${distro:Suggests}
 Description: audio file converter into ogg-vorbis format
