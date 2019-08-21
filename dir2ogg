@@ -343,8 +343,8 @@ class Id3TagHandler:
         """Common grabber, starts the handler and applies the tags to self.tags"""
         try:
             mydict = handler(self.song)
-        except error as msg:
-            import warnings, traceback
+        except error:
+            import traceback
 
             warn("Mutagen failed on %s, no tags available" % self.song)
             traceback.print_exc(0)
@@ -735,7 +735,7 @@ class Convert(Id3TagHandler):
                 myogg = OggVorbis(self.songogg)
                 myogg.update(self.tags)
                 myogg.save()
-            except:
+            except Exception:
                 warn("Could not save the tags")
                 import traceback
 
