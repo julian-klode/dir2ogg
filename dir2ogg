@@ -36,7 +36,7 @@ import sys
 import os, os.path
 import re
 import warnings
-from fnmatch import _cache, translate
+from fnmatch import translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
@@ -52,6 +52,9 @@ FILTERS = {'mp3': ('*.mp3',),
            'wv': ('*.wv','*.wvc'),
            'wav': ('*.wav', ),
            }
+
+# Cache of regex patterns
+_cache = {}
 
 def mmatch(names, patterns, rbool=True):
     '''names/patterns=str/list/tuple'''
