@@ -56,9 +56,9 @@ FILTERS = {'mp3': ('*.mp3',),
 def mmatch(names, patterns, rbool=True):
     '''names/patterns=str/list/tuple'''
     results = []
-    if isinstance(names, (str, unicode)):
+    if isinstance(names, str):
         names = [names]
-    if isinstance(patterns, (str, unicode)):
+    if isinstance(patterns, str):
         patterns = [patterns]
     for pat in patterns:
         pat = pat.lower()
@@ -113,7 +113,7 @@ def read_opts():
         'mpc': ('mpcdec', 'mplayer'),
         }
 
-    for ext, dec in commands.items():
+    for ext, dec in list(commands.items()):
         default, choices = None, []
         for command in dec:
             in_path = [prefix for prefix in os.environ['PATH'].split(os.pathsep) if os.path.exists(os.path.join(prefix, command))]
@@ -126,7 +126,7 @@ def read_opts():
     options, args = parser.parse_args()
 
     options.filters    = []
-    for ext, pat in FILTERS.items():
+    for ext, pat in list(FILTERS.items()):
         # Activate Encoders for files on the commandline
         if options.convert_all or mmatch(args, pat):
             setattr(options, 'convert_' + ext, True)
@@ -141,15 +141,15 @@ def read_opts():
     return options, args
 
 def info(msg):
-    print 'INFO: %s' % msg
+    print('INFO: %s' % msg)
 
 def warn(msg):
     '''print errors to the screen (red)'''
-    print >> sys.stderr, "WARNING: %s" % msg
+    print("WARNING: %s" % msg, file=sys.stderr)
 
 def fatal(msg):
     '''Fatal error (error + exit)'''
-    print >> sys.stderr, "ERROR: %s" % msg
+    print("ERROR: %s" % msg, file=sys.stderr)
     sys.exit(1)
 
 def return_dirs(root):
@@ -180,15 +180,15 @@ class Id3TagHandler:
         '''Common grabber, starts the handler and applies the tags to self.tags'''
         try:
             mydict  = handler(self.song)
-        except error, msg:
+        except error as msg:
             import warnings,traceback;
             warn('Mutagen failed on %s, no tags available' % self.song)
             traceback.print_exc(0)
-            print >> sys.stderr
+            print(file=sys.stderr)
             return
         if convert:
-            convert = dict([(k.lower(), v.lower()) for k, v in convert.items()]) # Fix convert
-        for key, val in mydict.items():
+            convert = dict([(k.lower(), v.lower()) for k, v in list(convert.items())]) # Fix convert
+        for key, val in list(mydict.items()):
             key = key.lower()
             key = convert and (key in convert and convert[key] or key) or key
             if not key in self.accept:
@@ -202,13 +202,13 @@ class Id3TagHandler:
                 if not isinstance(val, list):
                     val = [val]
                 for i in val:
-                    if not isinstance(i, unicode):
+                    if not isinstance(i, str):
                         # Convert all invalid values to unicode
                         try:
-                            new_val.append(unicode(i))
+                            new_val.append(str(i))
                         except UnicodeDecodeError:
                             warn('Ignoring UnicodeDecodeError in key %s' % key)
-                            new_val.append(unicode(i, errors='ignore'))
+                            new_val.append(str(i, errors='ignore'))
                     else:
                         new_val.append(i)
                 val = new_val
@@ -314,7 +314,7 @@ class Id3TagHandler:
 
     def list_if_verbose(self):
         info('Meta-tags I will write:')
-        for key, val in self.tags.items():
+        for key, val in list(self.tags.items()):
             if type(val) == list:
                 info(key + ': ' + ','.join(val))
             else:
@@ -406,7 +406,7 @@ class Convert(Id3TagHandler):
         # (smartmp3) I have to remember default quality for next files
         original_quality = self.conf.quality
         try:
-            for ext, pat in FILTERS.items():
+            for ext, pat in list(FILTERS.items()):
                 if mmatch(self.song, pat) and ext != 'wav':
                     self.decoder = getattr(self.conf, ext + '_decoder')
                     getattr(self, 'grab_%s_tags' % ext)()
@@ -513,20 +513,20 @@ class ConvertDirectory:
         ''' Echo files to be converted if verbose flag is set.'''
         info('In %s I am going to convert:' % self.directory)
         for song in self.songs:
-            print " ", song
+            print(" ", song)
 
 
 def show_banner():
-    print 'dir2ogg %s (%s), converts audio files into ogg vorbis.\n' % (__version__, __date__)
+    print('dir2ogg %s (%s), converts audio files into ogg vorbis.\n' % (__version__, __date__))
 
 def show_license(*args, **kwargs):
-    print 'Copyright (C) 2007-2009 Julian Andres Klode <jak@jak-linux.org>'
-    print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n'
-    print 'This program is distributed in the hope that it will be useful,'
-    print 'but WITHOUT ANY WARRANTY; without even the implied warranty of'
-    print 'MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the'
-    print 'GNU General Public License for more details.\n'
-    print 'Currently developed by Julian Andres Klode <jak@jak-linux.org>.'
+    print('Copyright (C) 2007-2009 Julian Andres Klode <jak@jak-linux.org>')
+    print('Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n')
+    print('This program is distributed in the hope that it will be useful,')
+    print('but WITHOUT ANY WARRANTY; without even the implied warranty of')
+    print('MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the')
+    print('GNU General Public License for more details.\n')
+    print('Currently developed by Julian Andres Klode <jak@jak-linux.org>.')
     sys.exit(0)
 
 def main():
@@ -550,7 +550,7 @@ def main():
             rdirs[os.path.abspath(path)] = os.listdir(path)
 
     success = True
-    for directory, files in rdirs.items():
+    for directory, files in list(rdirs.items()):
         if not ConvertDirectory(conf, directory, files).convert():
             success = False
     if not success:
