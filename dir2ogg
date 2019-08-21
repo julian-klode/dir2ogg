@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 # Copyright (C) 2007-2009 Julian Andres Klode <jak@jak-linux.org>
 # Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>
@@ -36,7 +36,7 @@ import sys
 import os, os.path
 import re
 import warnings
-from fnmatch import _cache, translate
+from fnmatch import translate
 from optparse import OptionParser
 from subprocess import Popen, call, PIPE
 
@@ -53,12 +53,15 @@ FILTERS = {'mp3': ('*.mp3',),
            'wav': ('*.wav', ),
            }
 
+# Cache of regex patterns
+_cache = {}
+
 def mmatch(names, patterns, rbool=True):
     '''names/patterns=str/list/tuple'''
     results = []
-    if isinstance(names, (str, unicode)):
+    if isinstance(names, str):
         names = [names]
-    if isinstance(patterns, (str, unicode)):
+    if isinstance(patterns, str):
         patterns = [patterns]
     for pat in patterns:
         pat = pat.lower()
@@ -141,15 +144,15 @@ def read_opts():
     return options, args
 
 def info(msg):
-    print 'INFO: %s' % msg
+    print('INFO: %s' % msg)
 
 def warn(msg):
     '''print errors to the screen (red)'''
-    print >> sys.stderr, "WARNING: %s" % msg
+    print("WARNING: %s" % msg, file=sys.stderr)
 
 def fatal(msg):
     '''Fatal error (error + exit)'''
-    print >> sys.stderr, "ERROR: %s" % msg
+    print("ERROR: %s" % msg, file=sys.stderr)
     sys.exit(1)
 
 def return_dirs(root):
@@ -180,11 +183,11 @@ class Id3TagHandler:
         '''Common grabber, starts the handler and applies the tags to self.tags'''
         try:
             mydict  = handler(self.song)
-        except error, msg:
+        except error as msg:
             import warnings,traceback;
             warn('Mutagen failed on %s, no tags available' % self.song)
             traceback.print_exc(0)
-            print >> sys.stderr
+            print(file=sys.stderr)
             return
         if convert:
             convert = dict([(k.lower(), v.lower()) for k, v in convert.items()]) # Fix convert
@@ -202,13 +205,13 @@ class Id3TagHandler:
                 if not isinstance(val, list):
                     val = [val]
                 for i in val:
-                    if not isinstance(i, unicode):
+                    if not isinstance(i, str):
                         # Convert all invalid values to unicode
                         try:
-                            new_val.append(unicode(i))
+                            new_val.append(str(i))
                         except UnicodeDecodeError:
                             warn('Ignoring UnicodeDecodeError in key %s' % key)
-                            new_val.append(unicode(i, errors='ignore'))
+                            new_val.append(str(i, errors='ignore'))
                     else:
                         new_val.append(i)
                 val = new_val
@@ -513,20 +516,20 @@ class ConvertDirectory:
         ''' Echo files to be converted if verbose flag is set.'''
         info('In %s I am going to convert:' % self.directory)
         for song in self.songs:
-            print " ", song
+            print(" ", song)
 
 
 def show_banner():
-    print 'dir2ogg %s (%s), converts audio files into ogg vorbis.\n' % (__version__, __date__)
+    print('dir2ogg %s (%s), converts audio files into ogg vorbis.\n' % (__version__, __date__))
 
 def show_license(*args, **kwargs):
-    print 'Copyright (C) 2007-2009 Julian Andres Klode <jak@jak-linux.org>'
-    print 'Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n'
-    print 'This program is distributed in the hope that it will be useful,'
-    print 'but WITHOUT ANY WARRANTY; without even the implied warranty of'
-    print 'MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the'
-    print 'GNU General Public License for more details.\n'
-    print 'Currently developed by Julian Andres Klode <jak@jak-linux.org>.'
+    print('Copyright (C) 2007-2009 Julian Andres Klode <jak@jak-linux.org>')
+    print('Copyright (C) 2003-2006 Darren Kirby <d@badcomputer.org>\n')
+    print('This program is distributed in the hope that it will be useful,')
+    print('but WITHOUT ANY WARRANTY; without even the implied warranty of')
+    print('MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the')
+    print('GNU General Public License for more details.\n')
+    print('Currently developed by Julian Andres Klode <jak@jak-linux.org>.')
     sys.exit(0)
 
 def main():
