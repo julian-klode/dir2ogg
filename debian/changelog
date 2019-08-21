@@ -1,3 +1,10 @@
+dir2ogg (0.13-1) unstable; urgency=medium
+
+  * New upstream release: Converts to Python 3
+  * Update Standards-Version to 4.4.0
+
+ -- Julian Andres Klode <jak@debian.org>  Wed, 21 Aug 2019 12:45:29 +0200
+
 dir2ogg (0.12-1) unstable; urgency=medium
 
   * New upstream release
